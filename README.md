@@ -28,6 +28,8 @@ pip install -e ".[dev]"
 
 ## Usage
 
+For a quick start, see `examples/example_usage.py`.
+
 ```python
 from pilflow import from_file, Operation
 
