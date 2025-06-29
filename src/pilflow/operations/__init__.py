@@ -4,5 +4,6 @@
 from . import resolution
 from . import resize
 from . import blur
+from . import sharpen
 
 # This ensures all operations are registered when the package is imported
