@@ -33,7 +33,13 @@ class FromFileProducer(Producer):
         
         try:
             pil_img = Image.open(self.file_path)
-            return ImgPack(pil_img, context_data=self.context_kwargs)
+            # Infer format from file extension
+            import os
+            file_extension = os.path.splitext(self.file_path)[1].lstrip('.').upper()
+            # PIL uses 'JPEG' for '.jpg' and '.jpeg'
+            if file_extension == 'JPG':
+                file_extension = 'JPEG'
+            return ImgPack(pil_img, context_data=self.context_kwargs, image_format=file_extension)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Image file not found: {self.file_path}")
         except PIL.UnidentifiedImageError as e:
@@ -64,11 +70,25 @@ class FromBase64Producer(Producer):
             PIL.UnidentifiedImageError: If the decoded data is not a valid image
         """
         from .image_pack import ImgPack
+        import re
         
         try:
-            image_data = base64.b64decode(self.base64_string)
+            # Check for data URI prefix (e.g., data:image/jpeg;base64,...)
+            match = re.match(r"data:image/([a-zA-Z0-9]+);base64,", self.base64_string)
+            image_format = None
+            if match:
+                image_format = match.group(1).upper()
+                # PIL uses 'JPEG' for 'jpeg'
+                if image_format == 'JPEG':
+                    image_format = 'JPEG'
+                # Remove the prefix before decoding
+                base64_data = self.base64_string[match.end():]
+            else:
+                base64_data = self.base64_string
+
+            image_data = base64.b64decode(base64_data)
             pil_img = Image.open(BytesIO(image_data))
-            return ImgPack(pil_img, context_data=self.context_kwargs)
+            return ImgPack(pil_img, context_data=self.context_kwargs, image_format=image_format)
         except (binascii.Error, ValueError) as e:
             raise ValueError(f"Invalid base64 string: {str(e)}")
         except PIL.UnidentifiedImageError as e:

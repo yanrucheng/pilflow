@@ -9,10 +9,11 @@ class ImgPack:
     # Registry for operations
     _operations = {}
     
-    def __init__(self, pil_img, context_data=None):
+    def __init__(self, pil_img, context_data=None, image_format: Optional[str] = None):
         self.pil_img = pil_img
         self._context_data = context_data if context_data is not None else {}
         self._structured_contexts: Dict[str, ContextData] = {}
+        self.image_format = image_format # Store the image format (e.g., 'jpeg', 'png')
 
     @property
     def context(self):
@@ -30,10 +31,12 @@ class ImgPack:
     def base64(self) -> str:
         """Return the base64 encoded string of the PIL image.
 
-        The image is saved as PNG format.
+        The image is saved using its original format if available, otherwise PNG.
         """
         from .consumers import ToBase64Consumer
-        consumer = ToBase64Consumer(format="PNG")
+        # Use the stored image_format, or default to PNG
+        format_to_use = self.image_format if self.image_format else "PNG"
+        consumer = ToBase64Consumer(format=format_to_use)
         return consumer.apply(self)
 
     @staticmethod
