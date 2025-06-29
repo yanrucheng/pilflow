@@ -2,6 +2,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Set
+from .operation import BaseOperation
 
 
 class ContextData(ABC):
@@ -133,7 +134,7 @@ class ContextData(ABC):
         """
         def decorator(op_class):
             # Get the operation name from the class
-            from .operation.base import BaseOperation
+            # Import moved to top of file
             operation_name = BaseOperation._get_operation_name(op_class)
             
             # Get the context name from the current class

@@ -1,61 +1,71 @@
 import pytest
 import base64
+import re
 from io import BytesIO
 from PIL import Image
 from pilflow import ImgPack
-from pilflow.core.consumers import ToBase64Consumer
 from pilflow.core.image_pack import ImgPack as CoreImgPack
 
 
-class TestToBase64Consumer:
-    """Tests for the ToBase64Consumer class."""
+class TestImgPackBase64:
+    """Tests for the ImgPack base64 property."""
     
-    def test_to_base64_consumer_init(self):
-        """Test ToBase64Consumer initialization."""
-        # Test default format
-        consumer = ToBase64Consumer()
-        assert consumer.format == "PNG"
-        
-        # Test custom format
-        consumer = ToBase64Consumer(format="JPEG")
-        assert consumer.format == "JPEG"
-    
-    def test_to_base64_consumer_apply(self, small_image):
-        """Test ToBase64Consumer apply method."""
+    def test_base64_property_default_format(self, small_image):
+        """Test ImgPack base64 property with default format."""
         img_pack = ImgPack(small_image)
-        consumer = ToBase64Consumer(format="PNG")
         
-        result = consumer.apply(img_pack)
+        result = img_pack.base64
         
         # Verify result is a string
         assert isinstance(result, str)
         
+        # Verify it has the correct data URI format
+        assert result.startswith("data:image/png;base64,")
+        
+        # Extract base64 data
+        base64_data = result.split(',')[1]
+        
         # Verify it's valid base64
         try:
-            decoded = base64.b64decode(result)
+            decoded = base64.b64decode(base64_data)
             assert len(decoded) > 0
         except Exception as e:
             pytest.fail(f"Result is not valid base64: {e}")
         
         # Verify we can recreate the image from the base64
-        decoded_img = Image.open(BytesIO(base64.b64decode(result)))
+        decoded_img = Image.open(BytesIO(base64.b64decode(base64_data)))
         assert decoded_img.size == small_image.size
     
-    def test_to_base64_different_formats(self, small_image):
-        """Test ToBase64Consumer with different image formats."""
-        img_pack = ImgPack(small_image)
+    def test_base64_with_image_format(self, small_image):
+        """Test ImgPack base64 property with specified image format."""
+        img_pack = ImgPack(small_image, image_format="JPEG")
         
+        result = img_pack.base64
+        
+        # Verify it has the correct data URI format for JPEG
+        assert result.startswith("data:image/jpeg;base64,")
+        
+        # Extract and verify base64 data
+        base64_data = result.split(',')[1]
+        decoded = base64.b64decode(base64_data)
+        decoded_img = Image.open(BytesIO(decoded))
+        assert decoded_img.size == small_image.size
+    
+    def test_base64_different_formats(self, small_image):
+        """Test ImgPack base64 property with different image formats."""
         formats = ["PNG", "JPEG"]
         results = {}
         
         for fmt in formats:
-            consumer = ToBase64Consumer(format=fmt)
-            result = consumer.apply(img_pack)
+            img_pack = ImgPack(small_image, image_format=fmt)
+            result = img_pack.base64
             results[fmt] = result
             
             # Verify each result is valid base64
             assert isinstance(result, str)
-            decoded = base64.b64decode(result)
+            assert result.startswith(f"data:image/{fmt.lower()};base64,")
+            base64_data = result.split(',')[1]
+            decoded = base64.b64decode(base64_data)
             decoded_img = Image.open(BytesIO(decoded))
             assert decoded_img.size == small_image.size
         
@@ -76,8 +86,10 @@ class TestToBase64TypePreservation:
         assert isinstance(result, str)
         assert len(result) > 0
         
-        # Verify it's valid base64
-        decoded = base64.b64decode(result)
+        # Verify it's valid base64 with data URI format
+        assert result.startswith("data:image/")
+        base64_data = result.split(',')[1]
+        decoded = base64.b64decode(base64_data)
         assert len(decoded) > 0
     
     def test_type_preservation_after_pipeline_operations(self, small_image):
@@ -119,8 +131,12 @@ class TestToBase64TypePreservation:
             assert isinstance(base64_result, str)
             assert len(base64_result) > 0
             
-            # Should be valid base64
-            decoded = base64.b64decode(base64_result)
+            # Should have data URI format
+            assert base64_result.startswith("data:image/")
+            
+            # Should be valid base64 (extract the base64 part)
+            base64_data = base64_result.split(',')[1]
+            decoded = base64.b64decode(base64_data)
             assert len(decoded) > 0
     
     def test_roundtrip_type_preservation(self, small_image):
@@ -142,24 +158,26 @@ class TestToBase64TypePreservation:
         # Both base64 strings should be identical
         assert base64_str == roundtrip_base64
     
-    def test_consumer_direct_usage_type_preservation(self, small_image):
-        """Test type preservation when using ToBase64Consumer directly."""
-        img_pack = ImgPack(small_image, context_data={'direct_test': True})
-        
+    def test_base64_property_different_formats_type_preservation(self, small_image):
+        """Test type preservation when using base64 property with different formats."""
         # Test with different formats
         formats = ["PNG", "JPEG", "WEBP"]
         
         for fmt in formats:
             try:
-                consumer = ToBase64Consumer(format=fmt)
-                result = consumer.apply(img_pack)
+                img_pack = ImgPack(small_image, context_data={'direct_test': True}, image_format=fmt)
+                result = img_pack.base64
                 
                 # Type should always be string
                 assert isinstance(result, str)
                 assert len(result) > 0
                 
+                # Should have correct data URI format
+                assert result.startswith(f"data:image/{fmt.lower()};base64,")
+                
                 # Should be valid base64
-                decoded = base64.b64decode(result)
+                base64_data = result.split(',')[1]
+                decoded = base64.b64decode(base64_data)
                 assert len(decoded) > 0
                 
                 # Should be able to recreate image

@@ -23,9 +23,7 @@ class ImgPack:
     @property
     def img(self):
         """Return the PIL image object."""
-        from .consumers import ToImageConsumer
-        consumer = ToImageConsumer()
-        return consumer.apply(self)
+        return self.pil_img
 
     @property
     def base64(self) -> str:
@@ -33,11 +31,14 @@ class ImgPack:
 
         The image is saved using its original format if available, otherwise PNG.
         """
-        from .consumers import ToBase64Consumer
-        # Use the stored image_format, or default to PNG
+        import base64
+        from io import BytesIO
+        
+        buffered = BytesIO()
         format_to_use = self.image_format if self.image_format else "PNG"
-        consumer = ToBase64Consumer(format=format_to_use)
-        return consumer.apply(self)
+        self.pil_img.save(buffered, format=format_to_use)
+        payload = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        return f"data:image/{format_to_use.lower()};base64,{payload}"
 
     @staticmethod
     def from_base64(base64_string: str, **kwargs) -> 'ImgPack':
@@ -54,9 +55,33 @@ class ImgPack:
             ValueError: If the base64 string is invalid or cannot be decoded.
             PIL.UnidentifiedImageError: If the decoded data is not a valid image.
         """
-        from .producers import FromBase64Producer
-        producer = FromBase64Producer(base64_string, **kwargs)
-        return producer.apply()
+        import base64
+        import binascii
+        import re
+        from io import BytesIO
+        import PIL
+        
+        try:
+            # Check for data URI prefix (e.g., data:image/jpeg;base64,...)
+            match = re.match(r"data:image/([a-zA-Z0-9]+);base64,", base64_string)
+            image_format = None
+            if match:
+                image_format = match.group(1).upper()
+                # PIL uses 'JPEG' for 'jpeg'
+                if image_format == 'JPEG':
+                    image_format = 'JPEG'
+                # Remove the prefix before decoding
+                base64_data = base64_string[match.end():]
+            else:
+                base64_data = base64_string
+
+            image_data = base64.b64decode(base64_data)
+            pil_img = Image.open(BytesIO(image_data))
+            return ImgPack(pil_img, context_data=kwargs, image_format=image_format)
+        except (binascii.Error, ValueError) as e:
+            raise ValueError(f"Invalid base64 string: {str(e)}")
+        except PIL.UnidentifiedImageError as e:
+            raise PIL.UnidentifiedImageError(f"Decoded data is not a valid image: {str(e)}")
 
     @staticmethod
     def from_file(file_path: str, **kwargs) -> 'ImgPack':
@@ -73,9 +98,21 @@ class ImgPack:
             FileNotFoundError: If the file does not exist.
             PIL.UnidentifiedImageError: If the file is not a valid image.
         """
-        from .producers import FromFileProducer
-        producer = FromFileProducer(file_path, **kwargs)
-        return producer.apply()
+        import os
+        import PIL
+        
+        try:
+            pil_img = Image.open(file_path)
+            # Infer format from file extension
+            file_extension = os.path.splitext(file_path)[1].lstrip('.').upper()
+            # PIL uses 'JPEG' for '.jpg' and '.jpeg'
+            if file_extension == 'JPG':
+                file_extension = 'JPEG'
+            return ImgPack(pil_img, context_data=kwargs, image_format=file_extension)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Image file not found: {file_path}")
+        except PIL.UnidentifiedImageError as e:
+            raise PIL.UnidentifiedImageError(f"File is not a valid image: {file_path}")
     
     def copy(self, new_img=None, **context_updates) -> 'ImgPack':
         """Create a new ImgPack instance with optional updates.
