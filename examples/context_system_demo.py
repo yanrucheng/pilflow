@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""
+Pilflow Context System Demo
+
+This script demonstrates the new structured context system in Pilflow,
+showing how operations can register context data classes and how they
+interact with each other through typed context data.
+"""
+
+import json
+from PIL import Image
+from pilflow import ImgPack, Operation
+from pilflow.core.context import ContextData
+from pilflow.contexts.resolution import ResolutionContextData
+from pilflow.contexts.resize import ResizeContextData
+from pilflow.contexts.blur import BlurContextData
+
+
+def create_sample_image(width: int = 1920, height: int = 1080) -> Image.Image:
+    """Create a sample image for demonstration."""
+    img = Image.new('RGB', (width, height), color='lightblue')
+    return img
+
+
+def demo_basic_context_usage():
+    """Demonstrate basic context data creation and usage."""
+    print("=== Basic Context Data Usage ===")
+    
+    # Create resolution context data
+    resolution_data = ResolutionContextData(
+        original_width=1920,
+        original_height=1080,
+        resolution_category="Full HD",
+        aspect_ratio=1920/1080
+    )
+    
+    print(f"Resolution: {resolution_data.original_width}x{resolution_data.original_height}")
+    print(f"Category: {resolution_data.resolution_category}")
+    print(f"Is HD or better: {resolution_data.is_hd_or_better()}")
+    print(f"Is landscape: {resolution_data.is_landscape()}")
+    print(f"Total pixels: {resolution_data.total_pixels:,}")
+    
+    # JSON serialization
+    json_str = resolution_data.to_json()
+    print(f"JSON: {json_str}")
+    
+    # Restore from JSON
+    restored = ResolutionContextData.from_json(json_str)
+    print(f"Restored width: {restored.original_width}")
+    print()
+
+
+def demo_imgpack_integration():
+    """Demonstrate ImgPack integration with structured contexts."""
+    print("=== ImgPack Integration ===")
+    
+    # Create image and ImgPack
+    img = create_sample_image(1920, 1080)
+    img_pack = ImgPack(img)
+    
+    # Add resolution context
+    resolution_context = ResolutionContextData(
+        original_width=1920,
+        original_height=1080,
+        resolution_category="Full HD",
+        aspect_ratio=1920/1080
+    )
+    img_pack.add_context(resolution_context)
+    
+    # Add resize context
+    resize_context = ResizeContextData(
+        current_width=1920,
+        current_height=1080,
+        target_width=1280,
+        target_height=720,
+        resized=False
+    )
+    img_pack.add_context(resize_context)
+    
+    # Check available contexts
+    print(f"Available contexts: {list(img_pack.get_all_contexts().keys())}")
+    print(f"Has resolution context: {img_pack.has_context('resolution')}")
+    print(f"Has blur context: {img_pack.has_context('blur')}")
+    
+    # Get context data
+    resolution = img_pack.get_context('resolution')
+    print(f"Resolution category: {resolution.resolution_category}")
+    
+    resize = img_pack.get_context('resize')
+    print(f"Target dimensions: {resize.target_width}x{resize.target_height}")
+    print(f"Has target dimensions: {resize.has_target_dimensions()}")
+    print()
+
+
+def demo_json_serialization():
+    """Demonstrate JSON serialization of ImgPack with contexts."""
+    print("=== JSON Serialization ===")
+    
+    # Create ImgPack with multiple contexts
+    img = create_sample_image(800, 600)
+    img_pack = ImgPack(img)
+    
+    # Add contexts
+    img_pack.add_context(ResolutionContextData(
+        original_width=800,
+        original_height=600,
+        resolution_category="SD",
+        aspect_ratio=800/600
+    ))
+    
+    img_pack.add_context(BlurContextData(
+        blur_applied=True,
+        blur_radius=2.5
+    ))
+    
+    # Serialize to JSON
+    json_str = img_pack.to_json()
+    data = json.loads(json_str)
+    
+    print("Serialized contexts:")
+    for context_name, context_data in data['structured_contexts'].items():
+        print(f"  {context_name}: {context_data}")
+    
+    # Restore from JSON
+    restored_pack = ImgPack.from_json(json_str, img)
+    print(f"\nRestored contexts: {list(restored_pack.get_all_contexts().keys())}")
+    
+    # Verify data integrity
+    restored_resolution = restored_pack.get_context('resolution')
+    restored_blur = restored_pack.get_context('blur')
+    print(f"Restored resolution: {restored_resolution.original_width}x{restored_resolution.original_height}")
+    print(f"Restored blur intensity: {restored_blur.get_blur_intensity()}")
+    print()
+
+
+def demo_operation_pipeline():
+    """Demonstrate operations using the new context system."""
+    print("=== Operation Pipeline with Context System ===")
+    
+    # Create a large image
+    img = create_sample_image(3840, 2160)  # 4K image
+    img_pack = ImgPack(img)
+    
+    print(f"Original image size: {img.size}")
+    
+    # Apply resolution analysis
+    result = img_pack.decide_resolution()
+    resolution_context = result.get_context('resolution')
+    print(f"Resolution analysis: {resolution_context.resolution_category}")
+    print(f"Is 4K: {resolution_context.is_4k()}")
+    
+    # Apply resize operation
+    result = result.resize(width=1920, height=1080)
+    resize_context = result.get_context('resize')
+    print(f"Resized to: {result.pil_img.size}")
+    print(f"Scale factor: {resize_context.calculate_scale_factor():.2f}")
+    
+    # Apply blur
+    result = result.blur(radius=1.5)
+    blur_context = result.get_context('blur')
+    print(f"Blur applied: {blur_context.blur_applied}")
+    print(f"Blur intensity: {blur_context.get_blur_intensity()}")
+    
+    # Show all contexts
+    print(f"\nFinal contexts: {list(result.get_all_contexts().keys())}")
+    print()
+
+
+def demo_missing_context_logging():
+    """Demonstrate missing context logging functionality."""
+    print("=== Missing Context Logging ===")
+    
+    img = create_sample_image()
+    img_pack = ImgPack(img)
+    
+    # Check for missing contexts
+    required_contexts = ['resolution', 'resize', 'blur']
+    missing = img_pack.get_missing_contexts(required_contexts)
+    print(f"Missing contexts: {missing}")
+    
+    # Log missing contexts
+    img_pack.log_missing_contexts(missing, 'demo_operation')
+    
+    # Add one context and check again
+    img_pack.add_context(ResolutionContextData(
+        original_width=1920,
+        original_height=1080,
+        resolution_category="Full HD",
+        aspect_ratio=1920/1080
+    ))
+    
+    missing_after = img_pack.get_missing_contexts(required_contexts)
+    print(f"Missing contexts after adding resolution: {missing_after}")
+    print()
+
+
+def demo_custom_context_class():
+    """Demonstrate creating a custom context data class."""
+    print("=== Custom Context Data Class ===")
+    
+    @ContextData.register
+    class ColorAnalysisContextData(ContextData):
+        """Context data for color analysis results."""
+        
+        def validate(self):
+            """Validate color analysis data."""
+            required_fields = ['dominant_color', 'color_count', 'brightness']
+            for field in required_fields:
+                if field not in self._data:
+                    raise ValueError(f"{field} is required")
+            
+            if not isinstance(self._data['color_count'], int) or self._data['color_count'] < 0:
+                raise ValueError("color_count must be a non-negative integer")
+            
+            if not 0 <= self._data['brightness'] <= 1:
+                raise ValueError("brightness must be between 0 and 1")
+        
+        @property
+        def dominant_color(self) -> tuple:
+            """Get the dominant color as RGB tuple."""
+            return tuple(self._data['dominant_color'])
+        
+        @property
+        def color_count(self) -> int:
+            """Get the number of unique colors."""
+            return self._data['color_count']
+        
+        @property
+        def brightness(self) -> float:
+            """Get the image brightness (0-1)."""
+            return self._data['brightness']
+        
+        def is_bright(self) -> bool:
+            """Check if the image is considered bright."""
+            return self.brightness > 0.7
+        
+        def is_colorful(self) -> bool:
+            """Check if the image has many colors."""
+            return self.color_count > 1000
+    
+    # Create and use the custom context
+    color_context = ColorAnalysisContextData(
+        dominant_color=[120, 150, 200],
+        color_count=1500,
+        brightness=0.8
+    )
+    
+    print(f"Dominant color: {color_context.dominant_color}")
+    print(f"Color count: {color_context.color_count}")
+    print(f"Brightness: {color_context.brightness}")
+    print(f"Is bright: {color_context.is_bright()}")
+    print(f"Is colorful: {color_context.is_colorful()}")
+    
+    # Check registration
+    registered_classes = ContextData.get_registered_classes()
+    print(f"Custom context registered as: {'color_analysis' in registered_classes}")
+    
+    # Add to ImgPack
+    img = create_sample_image()
+    img_pack = ImgPack(img)
+    img_pack.add_context(color_context)
+    
+    print(f"Context added to ImgPack: {img_pack.has_context('color_analysis')}")
+    print()
+
+
+def main():
+    """Run all demonstrations."""
+    print("Pilflow Context System Demonstration")
+    print("===================================\n")
+    
+    demo_basic_context_usage()
+    demo_imgpack_integration()
+    demo_json_serialization()
+    demo_operation_pipeline()
+    demo_missing_context_logging()
+    demo_custom_context_class()
+    
+    print("Demo completed successfully!")
+
+
+if __name__ == '__main__':
+    main()

@@ -1,4 +1,5 @@
 from ..core.operation import Operation
+from ..contexts.resolution import ResolutionContextData
 
 @Operation.register
 class DecideResolutionOperation(Operation):
@@ -29,12 +30,16 @@ class DecideResolutionOperation(Operation):
         else:
             resolution_category = "SD"
         
-        # Add resolution info to context
-        context_updates = {
-            'original_width': width,
-            'original_height': height,
-            'resolution_category': resolution_category,
-            'aspect_ratio': width / height
-        }
+        # Create structured resolution context data
+        resolution_context = ResolutionContextData(
+            original_width=width,
+            original_height=height,
+            resolution_category=resolution_category,
+            aspect_ratio=width / height
+        )
         
-        return img_pack.copy(**context_updates)
+        # Create new img_pack with structured context
+        new_pack = img_pack.copy()
+        new_pack.add_context(resolution_context)
+        
+        return new_pack

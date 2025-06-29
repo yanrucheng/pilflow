@@ -1,5 +1,6 @@
-from PIL import ImageFilter
+from PIL import Image, ImageFilter
 from ..core.operation import Operation
+from ..contexts.blur import BlurContextData
 
 @Operation.register
 class BlurOperation(Operation):
@@ -28,9 +29,14 @@ class BlurOperation(Operation):
         """
         blurred_img = img_pack.pil_img.filter(ImageFilter.GaussianBlur(radius=self.radius))
         
-        context_updates = {
-            'blur_applied': True,
-            'blur_radius': self.radius
-        }
+        # Create structured blur context data
+        blur_context = BlurContextData(
+            blur_applied=True,
+            blur_radius=self.radius
+        )
         
-        return img_pack.copy(new_img=blurred_img, **context_updates)
+        # Create new img_pack with structured context
+        new_pack = img_pack.copy(new_img=blurred_img)
+        new_pack.add_context(blur_context)
+        
+        return new_pack

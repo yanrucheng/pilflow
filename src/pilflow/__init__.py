@@ -1,5 +1,9 @@
 from .core.image_pack import ImgPack, from_file
 from .core.operation import Operation
+from .core.context import ContextData
+
+# Import context classes to register them
+from . import contexts
 
 # Import operations to trigger registration
 from . import operations
