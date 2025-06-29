@@ -3,9 +3,10 @@ import unittest
 from PIL import Image
 from pilflow.core.context import ContextData
 from pilflow.core.image_pack import ImgPack
-from pilflow.contexts.resolution import ResolutionContextData
 from pilflow.contexts.resize import ResizeContextData
 from pilflow.contexts.blur import BlurContextData
+from pilflow.contexts.resolution_decision import ResolutionDecisionContextData
+from jinnang.media.resolution import ResolutionPreset
 
 
 class TestContextData:
@@ -33,82 +34,6 @@ class TestContextData:
         assert 'custom_test' in registered_classes
         assert registered_classes['custom_test'] is CustomTestContextData
     
-
-class TestResolutionContextData:
-    """Tests for ResolutionContextData."""
-    
-    def test_initialization(self):
-        """Test resolution context data initialization."""
-        context = ResolutionContextData(
-            original_width=1920,
-            original_height=1080,
-            resolution_category="Full HD",
-            aspect_ratio=16/9
-        )
-        
-        assert context.original_width == 1920
-        assert context.original_height == 1080
-        assert context.resolution_category == "Full HD"
-        assert abs(context.aspect_ratio - 16/9) < 0.01
-    
-    def test_validation(self):
-        """Test resolution context data validation."""
-        # Valid data should not raise
-        ResolutionContextData(
-            original_width=1920,
-            original_height=1080,
-            resolution_category="Full HD",
-            aspect_ratio=1920/1080
-        )
-        
-        # Invalid width
-        with pytest.raises(ValueError, match="original_width must be a positive integer"):
-            ResolutionContextData(
-                original_width=-1,
-                original_height=1080,
-                resolution_category="Full HD",
-                aspect_ratio=16/9
-            )
-        
-        # Invalid category
-        with pytest.raises(ValueError, match="resolution_category must be one of"):
-            ResolutionContextData(
-                original_width=1920,
-                original_height=1080,
-                resolution_category="Invalid",
-                aspect_ratio=16/9
-            )
-        
-        # Mismatched aspect ratio
-        with pytest.raises(ValueError, match="aspect_ratio.*doesn't match dimensions"):
-            ResolutionContextData(
-                original_width=1920,
-                original_height=1080,
-                resolution_category="Full HD",
-                aspect_ratio=1.0  # Wrong ratio
-            )
-    
-    def test_properties(self):
-        """Test resolution context data properties."""
-        context = ResolutionContextData(
-            original_width=3840,
-            original_height=2160,
-            resolution_category="4K",
-            aspect_ratio=16/9
-        )
-        
-        assert context.total_pixels == 3840 * 2160
-        assert context.is_4k()
-        assert context.is_hd_or_better()
-        assert context.is_landscape()
-        assert not context.is_portrait()
-        assert not context.is_square()
-    
-    def test_registration(self):
-        """Test that ResolutionContextData is properly registered."""
-        registered_classes = ContextData.get_registered_classes()
-        assert 'resolution' in registered_classes
-        assert registered_classes['resolution'] is ResolutionContextData
 
 
 class TestResizeContextData:
@@ -211,8 +136,8 @@ class TestContextProducerRegistration(unittest.TestCase):
     
     def test_producer_registration(self):
         """Test that operations are correctly registered as context producers."""
-        # Check that DecideResolutionOperation is registered as a producer of resolution context
-        resolution_producers = ResolutionContextData.get_producer_operations('resolution')
+        # Check that DecideResolutionOperation is registered as a producer of resolution_decision context
+        resolution_producers = ResolutionDecisionContextData.get_producer_operations('resolution_decision')
         self.assertIn('decide_resolution', resolution_producers)
         
         # Check that ResizeOperation is registered as a producer of resize context
@@ -228,12 +153,12 @@ class TestContextProducerRegistration(unittest.TestCase):
         all_producers = ContextData.get_all_producer_operations()
         
         # Check that we have producers for our context types
-        self.assertIn('resolution', all_producers)
+        self.assertIn('resolution_decision', all_producers)
         self.assertIn('resize', all_producers)
         self.assertIn('blur', all_producers)
         
         # Check specific producers
-        self.assertIn('decide_resolution', all_producers['resolution'])
+        self.assertIn('decide_resolution', all_producers['resolution_decision'])
         self.assertIn('resize', all_producers['resize'])
         self.assertIn('blur', all_producers['blur'])
     
@@ -251,16 +176,16 @@ class TestContextProducerRegistration(unittest.TestCase):
         captured_output = io.StringIO()
         
         with patch('sys.stdout', captured_output):
-            # Try to use resize operation without resolution context
+            # Try to use resize operation without resolution_decision context
             # This should trigger missing context detection
-            img_pack.log_missing_contexts(['resolution'], 'resize')
+            img_pack.log_missing_contexts(['resolution_decision'], 'resize')
         
         output = captured_output.getvalue()
         
         # Check that warning and suggestions are printed
         self.assertIn('Warning: resize requires missing contexts', output)
         self.assertIn('decide_resolution', output)
-        self.assertIn('resolution', output)
+        self.assertIn('resolution_decision', output)
 
 
 class TestImgPackContextIntegration:
@@ -271,23 +196,19 @@ class TestImgPackContextIntegration:
         img = Image.new('RGB', (100, 100))
         img_pack = ImgPack(img)
         
-        # Add resolution context
-        resolution_context = ResolutionContextData(
-            original_width=100,
-            original_height=100,
-            resolution_category="SD",
-            aspect_ratio=1.0
+        # Add resolution decision context
+        resolution_context = ResolutionDecisionContextData(
+            resolution_preset=ResolutionPreset.ORIGINAL
         )
         img_pack.add_context(resolution_context)
         
         # Test retrieval
-        retrieved = img_pack.get_context('resolution')
+        retrieved = img_pack.get_context('resolution_decision')
         assert retrieved is resolution_context
-        assert img_pack.has_context('resolution')
+        assert img_pack.has_context('resolution_decision')
         
-        # Test legacy context data is also updated
-        assert img_pack.context['original_width'] == 100
-        assert img_pack.context['resolution_category'] == "SD"
+        # Test that context is properly stored
+        assert retrieved.resolution_preset == ResolutionPreset.ORIGINAL
     
     def test_missing_context_logging(self, capsys):
         """Test missing context logging functionality."""
@@ -295,13 +216,13 @@ class TestImgPackContextIntegration:
         img_pack = ImgPack(img)
         
         # Test missing contexts
-        missing = img_pack.get_missing_contexts(['resolution', 'blur'])
-        assert missing == ['resolution', 'blur']
+        missing = img_pack.get_missing_contexts(['resolution_decision', 'blur'])
+        assert missing == ['resolution_decision', 'blur']
         
         # Test logging
-        img_pack.log_missing_contexts(['resolution'], 'test_operation')
+        img_pack.log_missing_contexts(['resolution_decision'], 'test_operation')
         captured = capsys.readouterr()
-        assert "Warning: test_operation requires missing contexts: ['resolution']" in captured.out
+        assert "Warning: test_operation requires missing contexts: ['resolution_decision']" in captured.out
     
     def test_context_copy(self):
         """Test that structured contexts are properly copied."""
@@ -309,11 +230,8 @@ class TestImgPackContextIntegration:
         img_pack = ImgPack(img)
         
         # Add context
-        resolution_context = ResolutionContextData(
-            original_width=100,
-            original_height=100,
-            resolution_category="SD",
-            aspect_ratio=1.0
+        resolution_context = ResolutionDecisionContextData(
+            resolution_preset=ResolutionPreset.RES_720P
         )
         img_pack.add_context(resolution_context)
         
@@ -321,14 +239,14 @@ class TestImgPackContextIntegration:
         copied_pack = img_pack.copy()
         
         # Verify context is copied
-        assert copied_pack.has_context('resolution')
-        copied_context = copied_pack.get_context('resolution')
-        assert copied_context.original_width == 100
+        assert copied_pack.has_context('resolution_decision')
+        copied_context = copied_pack.get_context('resolution_decision')
+        assert copied_context.resolution_preset == ResolutionPreset.RES_720P
         
         # Verify they are separate instances (deep copy of context data)
         assert copied_context is not resolution_context
         
         # Verify modifying one doesn't affect the other
-        copied_context._data['original_width'] = 200
-        assert resolution_context.original_width == 100
-        assert copied_context.original_width == 200
+        copied_context._data['resolution_preset'] = ResolutionPreset.RES_1080P
+        assert resolution_context.resolution_preset == ResolutionPreset.RES_720P
+        assert copied_context.resolution_preset == ResolutionPreset.RES_1080P

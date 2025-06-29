@@ -2,6 +2,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Type, Optional, List, Set, TYPE_CHECKING
+from .operation import Operation
 
 if TYPE_CHECKING:
     from .operation import Operation
@@ -129,7 +130,7 @@ class ContextData(ABC):
         """Decorator to register an operation as a producer of this context type.
         
         Usage:
-        @ResolutionContextData.register_as_producer
+        @ResolutionDecisionContextData.register_as_producer
         @Operation.register
         class DecideResolutionOperation(Operation):
             ...
@@ -139,7 +140,6 @@ class ContextData(ABC):
         """
         def decorator(op_class):
             # Get the operation name from the class
-            from .operation import Operation
             operation_name = Operation._get_operation_name(op_class)
             
             # Get the context name from the current class

@@ -1,7 +1,7 @@
 # Operations module for pilflow pipeline components
 # Import all operations to trigger registration
 
-from . import resolution
+from . import decide_resolution
 from . import resize
 from . import blur
 from . import sharpen

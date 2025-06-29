@@ -11,7 +11,8 @@ import json
 from PIL import Image
 from pilflow import ImgPack, Operation
 from pilflow.core.context import ContextData
-from pilflow.contexts.resolution import ResolutionContextData
+from pilflow.contexts.resolution_decision import ResolutionDecisionContextData
+from jinnang.media.resolution import ResolutionPreset
 from pilflow.contexts.resize import ResizeContextData
 from pilflow.contexts.blur import BlurContextData
 
@@ -26,27 +27,21 @@ def demo_basic_context_usage():
     """Demonstrate basic context data creation and usage."""
     print("=== Basic Context Data Usage ===")
     
-    # Create resolution context data
-    resolution_data = ResolutionContextData(
-        original_width=1920,
-        original_height=1080,
-        resolution_category="Full HD",
-        aspect_ratio=1920/1080
+    # Create resolution decision context data
+    resolution_data = ResolutionDecisionContextData(
+        resolution_preset=ResolutionPreset.RES_1080P
     )
     
-    print(f"Resolution: {resolution_data.original_width}x{resolution_data.original_height}")
-    print(f"Category: {resolution_data.resolution_category}")
-    print(f"Is HD or better: {resolution_data.is_hd_or_better()}")
-    print(f"Is landscape: {resolution_data.is_landscape()}")
-    print(f"Total pixels: {resolution_data.total_pixels:,}")
+    print(f"Resolution preset: {resolution_data.resolution_preset}")
+    print(f"Resolution preset value: {resolution_data.resolution_preset.value}")
     
     # JSON serialization
     json_str = resolution_data.to_json()
     print(f"JSON: {json_str}")
     
     # Restore from JSON
-    restored = ResolutionContextData.from_json(json_str)
-    print(f"Restored width: {restored.original_width}")
+    restored = ResolutionDecisionContextData.from_json(json_str)
+    print(f"Restored preset: {restored.resolution_preset}")
     print()
 
 
@@ -58,12 +53,9 @@ def demo_imgpack_integration():
     img = create_sample_image(1920, 1080)
     img_pack = ImgPack(img)
     
-    # Add resolution context
-    resolution_context = ResolutionContextData(
-        original_width=1920,
-        original_height=1080,
-        resolution_category="Full HD",
-        aspect_ratio=1920/1080
+    # Add resolution decision context
+    resolution_context = ResolutionDecisionContextData(
+        resolution_preset=ResolutionPreset.RES_1080P
     )
     img_pack.add_context(resolution_context)
     
@@ -79,12 +71,12 @@ def demo_imgpack_integration():
     
     # Check available contexts
     print(f"Available contexts: {list(img_pack.get_all_contexts().keys())}")
-    print(f"Has resolution context: {img_pack.has_context('resolution')}")
+    print(f"Has resolution_decision context: {img_pack.has_context('resolution_decision')}")
     print(f"Has blur context: {img_pack.has_context('blur')}")
     
     # Get context data
-    resolution = img_pack.get_context('resolution')
-    print(f"Resolution category: {resolution.resolution_category}")
+    resolution = img_pack.get_context('resolution_decision')
+    print(f"Resolution preset: {resolution.resolution_preset}")
     
     resize = img_pack.get_context('resize')
     print(f"Target dimensions: {resize.target_width}x{resize.target_height}")
@@ -101,11 +93,8 @@ def demo_json_serialization():
     img_pack = ImgPack(img)
     
     # Add contexts
-    img_pack.add_context(ResolutionContextData(
-        original_width=800,
-        original_height=600,
-        resolution_category="SD",
-        aspect_ratio=800/600
+    img_pack.add_context(ResolutionDecisionContextData(
+        resolution_preset=ResolutionPreset.RES_720P
     ))
     
     img_pack.add_context(BlurContextData(
@@ -126,9 +115,9 @@ def demo_json_serialization():
     print(f"\nRestored contexts: {list(restored_pack.get_all_contexts().keys())}")
     
     # Verify data integrity
-    restored_resolution = restored_pack.get_context('resolution')
+    restored_resolution = restored_pack.get_context('resolution_decision')
     restored_blur = restored_pack.get_context('blur')
-    print(f"Restored resolution: {restored_resolution.original_width}x{restored_resolution.original_height}")
+    print(f"Restored resolution preset: {restored_resolution.resolution_preset}")
     print(f"Restored blur intensity: {restored_blur.get_blur_intensity()}")
     print()
 
@@ -145,9 +134,9 @@ def demo_operation_pipeline():
     
     # Apply resolution analysis
     result = img_pack.decide_resolution()
-    resolution_context = result.get_context('resolution')
-    print(f"Resolution analysis: {resolution_context.resolution_category}")
-    print(f"Is 4K: {resolution_context.is_4k()}")
+    resolution_context = result.get_context('resolution_decision')
+    print(f"Resolution preset: {resolution_context.resolution_preset}")
+    print(f"Resolution value: {resolution_context.resolution_preset.value}")
     
     # Apply resize operation
     result = result.resize(width=1920, height=1080)
@@ -174,7 +163,7 @@ def demo_missing_context_logging():
     img_pack = ImgPack(img)
     
     # Check for missing contexts
-    required_contexts = ['resolution', 'resize', 'blur']
+    required_contexts = ['resolution_decision', 'resize', 'blur']
     missing = img_pack.get_missing_contexts(required_contexts)
     print(f"Missing contexts: {missing}")
     
@@ -182,11 +171,8 @@ def demo_missing_context_logging():
     img_pack.log_missing_contexts(missing, 'demo_operation')
     
     # Add one context and check again
-    img_pack.add_context(ResolutionContextData(
-        original_width=1920,
-        original_height=1080,
-        resolution_category="Full HD",
-        aspect_ratio=1920/1080
+    img_pack.add_context(ResolutionDecisionContextData(
+        resolution_preset=ResolutionPreset.RES_1080P
     ))
     
     missing_after = img_pack.get_missing_contexts(required_contexts)

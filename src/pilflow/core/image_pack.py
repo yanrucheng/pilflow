@@ -173,6 +173,60 @@ class ImgPack:
         """
         return self._structured_contexts.copy()
     
+    def to_json(self) -> str:
+        """Convert ImgPack to JSON string.
+        
+        Returns:
+            JSON string representation including image and contexts
+        """
+        import json
+        
+        # Serialize structured contexts
+        structured_contexts = {}
+        for name, context in self._structured_contexts.items():
+            structured_contexts[name] = context.to_dict()
+        
+        data = {
+            'image_base64': self.base64,
+            'context_data': self._context_data,
+            'structured_contexts': structured_contexts
+        }
+        
+        return json.dumps(data, indent=2)
+    
+    @classmethod
+    def from_json(cls, json_str: str, pil_img: Optional[Image.Image] = None) -> 'ImgPack':
+        """Create ImgPack from JSON string.
+        
+        Args:
+            json_str: JSON string containing ImgPack data
+            pil_img: Optional PIL image to use instead of the one in JSON
+            
+        Returns:
+            ImgPack instance
+        """
+        import json
+        
+        data = json.loads(json_str)
+        
+        # Use provided image or decode from base64
+        if pil_img is not None:
+            img = pil_img
+        else:
+            img = cls.from_base64(data['image_base64']).pil_img
+        
+        # Create ImgPack with legacy context data
+        img_pack = cls(img, data.get('context_data', {}))
+        
+        # Restore structured contexts
+        for name, context_data in data.get('structured_contexts', {}).items():
+            context_class = ContextData.get_context_class(name)
+            if context_class:
+                context = context_class.from_dict(context_data)
+                img_pack._structured_contexts[name] = context
+        
+        return img_pack
+    
     def get_missing_contexts(self, required_contexts: list) -> list:
         """Get list of missing required contexts for logging purposes.
         

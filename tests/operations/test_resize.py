@@ -3,6 +3,7 @@ from PIL import Image
 
 from pilflow import ImgPack
 from pilflow.operations.resize import ResizeOperation
+from jinnang.media.resolution import ResolutionPreset
 
 
 class TestResizeOperation:
@@ -34,6 +35,12 @@ class TestResizeOperation:
         op = ResizeOperation(width=800, height=600)
         assert op.width == 800
         assert op.height == 600
+        
+        # Test with resolution preset
+        op = ResizeOperation(resolution_preset=ResolutionPreset.RES_720P)
+        assert op.resolution_preset == ResolutionPreset.RES_720P
+        assert op.width is None
+        assert op.height is None
     
     def test_apply_with_explicit_dimensions(self):
         """Test resizing with explicitly provided dimensions."""
@@ -121,3 +128,24 @@ class TestResizeOperation:
         
         # Check the result
         assert result.pil_img.size == (500, 375)
+    
+    def test_apply_with_resolution_preset(self):
+        """Test resizing with ResolutionPreset parameter."""
+        # Create a test image
+        img = Image.new('RGB', (1920, 1080))
+        img_pack = ImgPack(img)
+        
+        # Test resizing with 720P preset
+        op = ResizeOperation(resolution_preset=ResolutionPreset.RES_720P)
+        result = op.apply(img_pack)
+        assert result.pil_img.size == (1280, 720)
+        
+        # Test resizing with ORIGINAL preset
+        op = ResizeOperation(resolution_preset=ResolutionPreset.ORIGINAL)
+        result = op.apply(img_pack)
+        assert result.pil_img.size == (1920, 1080)  # Should keep original size
+        
+        # Test resizing with 4K preset
+        op = ResizeOperation(resolution_preset=ResolutionPreset.RES_4K)
+        result = op.apply(img_pack)
+        assert result.pil_img.size == (3840, 2160)

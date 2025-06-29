@@ -1,13 +1,13 @@
 """Context data classes for pilflow operations."""
 
-from .resolution import ResolutionContextData
+from .resolution_decision import ResolutionDecisionContextData
 from .resize import ResizeContextData
 from .blur import BlurContextData
 from .sharpen import SharpenContextData
 
 __all__ = [
-    'ResolutionContextData',
-    'ResizeContextData', 
+    'ResolutionDecisionContextData',
+    'ResizeContextData',
     'BlurContextData',
-    'SharpenContextData'
+    'SharpenContextData',
 ]

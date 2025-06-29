@@ -19,7 +19,7 @@ class TestIntegration:
         
         # Check the result
         assert result.img.size[0] == 200  # Width should be 200
-        assert 'resolution_category' in result.context
+        assert result.has_context('resolution_decision')
         assert 'blur_applied' in result.context
         assert result.context['blur_radius'] == 1.5
     
@@ -49,7 +49,7 @@ class TestIntegration:
         
         # Check the result
         assert result.img.size[0] == 150
-        assert 'resolution_category' in result.context
+        assert result.has_context('resolution_decision')
     
     def test_complex_pipeline(self, small_img_pack):
         """Test a complex pipeline with multiple operations."""

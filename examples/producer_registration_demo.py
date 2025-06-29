@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from PIL import Image
 from pilflow import ImgPack
 from pilflow.core.context import ContextData
-from pilflow.contexts.resolution import ResolutionContextData
+from pilflow.contexts.resolution_decision import ResolutionDecisionContextData
 from pilflow.contexts.resize import ResizeContextData
 from pilflow.contexts.blur import BlurContextData
 
@@ -33,8 +33,8 @@ def main():
     
     # 2. Show specific context producers
     print("2. Specific Context Producers:")
-    resolution_producers = ResolutionContextData.get_producer_operations('resolution')
-    print(f"   Resolution context producers: {resolution_producers}")
+    resolution_producers = ResolutionDecisionContextData.get_producer_operations('resolution_decision')
+    print(f"   Resolution decision context producers: {resolution_producers}")
     
     resize_producers = ResizeContextData.get_producer_operations('resize')
     print(f"   Resize context producers: {resize_producers}")
@@ -51,7 +51,7 @@ def main():
     img_pack = ImgPack(test_image)
     
     print("   Creating ImgPack without any context data...")
-    print("   Attempting to use resize operation (which requires resolution context):")
+    print("   Attempting to use resize operation (which may require resolution_decision context):")
     print()
     
     # This will trigger missing context detection
@@ -66,10 +66,10 @@ def main():
     
     # 4. Show the correct workflow
     print("4. Correct Workflow - Using Producer Operations:")
-    print("   Step 1: Run decide_resolution to generate resolution context")
+    print("   Step 1: Run decide_resolution to generate resolution_decision context")
     img_pack_with_resolution = img_pack.decide_resolution()
     
-    print("   Step 2: Now resize operation can access resolution context")
+    print("   Step 2: Now resize operation can access resolution_decision context")
     resized = img_pack_with_resolution.resize(400, 300)
     
     print("   Step 3: Apply blur operation")
@@ -89,7 +89,7 @@ def main():
     print("6. Custom Operation Registration Example:")
     print("   You can create custom operations that register as context producers:")
     print()
-    print("   @ResolutionContextData.register_as_producer")
+    print("   @ResolutionDecisionContextData.register_as_producer")
     print("   @Operation.register")
     print("   class AutoResolutionDeciderOperation(Operation):")
     print("       def apply(self, img_pack):")
@@ -97,7 +97,7 @@ def main():
     print("           return img_pack")
     print()
     print("   This would register 'auto_resolution_decider' as another producer")
-    print("   of resolution context data.")
+    print("   of resolution_decision context data.")
     print()
     
     print("=== Demo Complete ===")
