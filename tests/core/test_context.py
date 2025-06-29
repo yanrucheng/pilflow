@@ -1,5 +1,4 @@
 import pytest
-import json
 import unittest
 from PIL import Image
 from pilflow.core.context import ContextData
@@ -34,34 +33,6 @@ class TestContextData:
         assert 'custom_test' in registered_classes
         assert registered_classes['custom_test'] is CustomTestContextData
     
-    def test_json_serialization(self):
-        """Test JSON serialization and deserialization."""
-        @ContextData.register
-        class SimpleContextData(ContextData):
-            def validate(self):
-                if 'value' not in self._data:
-                    raise ValueError("value is required")
-        
-        # Create context data
-        context = SimpleContextData(value=42, name="test")
-        
-        # Test to_dict
-        data_dict = context.to_dict()
-        assert data_dict == {'value': 42, 'name': 'test'}
-        
-        # Test to_json
-        json_str = context.to_json()
-        parsed = json.loads(json_str)
-        assert parsed == {'value': 42, 'name': 'test'}
-        
-        # Test from_dict
-        restored = SimpleContextData.from_dict(data_dict)
-        assert restored == context
-        
-        # Test from_json
-        restored_from_json = SimpleContextData.from_json(json_str)
-        assert restored_from_json == context
-
 
 class TestResolutionContextData:
     """Tests for ResolutionContextData."""
@@ -317,40 +288,6 @@ class TestImgPackContextIntegration:
         # Test legacy context data is also updated
         assert img_pack.context['original_width'] == 100
         assert img_pack.context['resolution_category'] == "SD"
-    
-    def test_json_serialization(self):
-        """Test ImgPack JSON serialization with structured contexts."""
-        img = Image.new('RGB', (100, 100))
-        img_pack = ImgPack(img)
-        
-        # Add multiple contexts
-        resolution_context = ResolutionContextData(
-            original_width=100,
-            original_height=100,
-            resolution_category="SD",
-            aspect_ratio=1.0
-        )
-        blur_context = BlurContextData(blur_applied=True, blur_radius=2)
-        
-        img_pack.add_context(resolution_context)
-        img_pack.add_context(blur_context)
-        
-        # Test JSON serialization
-        json_str = img_pack.to_json()
-        data = json.loads(json_str)
-        
-        assert 'structured_contexts' in data
-        assert 'resolution' in data['structured_contexts']
-        assert 'blur' in data['structured_contexts']
-        
-        # Test deserialization
-        restored_pack = ImgPack.from_json(json_str, img)
-        assert restored_pack.has_context('resolution')
-        assert restored_pack.has_context('blur')
-        
-        restored_resolution = restored_pack.get_context('resolution')
-        assert restored_resolution.original_width == 100
-        assert restored_resolution.resolution_category == "SD"
     
     def test_missing_context_logging(self, capsys):
         """Test missing context logging functionality."""

@@ -1,7 +1,6 @@
 from PIL import Image
 from typing import Dict, Any, Optional, Union
 from .context import ContextData
-import json
 
 class ImgPack:
     """Base class for image processing pipeline with structured context support."""
@@ -111,69 +110,6 @@ class ImgPack:
             Dictionary of all structured contexts
         """
         return self._structured_contexts.copy()
-    
-    def to_json(self, include_image_data: bool = False) -> str:
-        """Convert ImgPack to JSON string.
-        
-        Args:
-            include_image_data: Whether to include base64-encoded image data
-            
-        Returns:
-            JSON string representation
-        """
-        data = {
-            'context_data': self._context_data,
-            'structured_contexts': {
-                name: context.to_dict() 
-                for name, context in self._structured_contexts.items()
-            }
-        }
-        
-        if include_image_data:
-            import base64
-            import io
-            buffer = io.BytesIO()
-            self.pil_img.save(buffer, format='PNG')
-            img_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
-            data['image_data'] = img_data
-            data['image_format'] = 'PNG'
-        
-        return json.dumps(data, indent=2)
-    
-    @classmethod
-    def from_json(cls, json_str: str, pil_img=None) -> 'ImgPack':
-        """Create ImgPack from JSON string.
-        
-        Args:
-            json_str: JSON string containing ImgPack data
-            pil_img: PIL Image object (required if image_data not in JSON)
-            
-        Returns:
-            ImgPack instance
-        """
-        data = json.loads(json_str)
-        
-        # Handle image data
-        if 'image_data' in data and pil_img is None:
-            import base64
-            import io
-            img_data = base64.b64decode(data['image_data'])
-            pil_img = Image.open(io.BytesIO(img_data))
-        elif pil_img is None:
-            raise ValueError("Either provide pil_img parameter or include image_data in JSON")
-        
-        # Create ImgPack with legacy context data
-        img_pack = cls(pil_img, data.get('context_data', {}))
-        
-        # Restore structured contexts
-        structured_contexts = data.get('structured_contexts', {})
-        for name, context_dict in structured_contexts.items():
-            context_class = ContextData.get_context_class(name)
-            if context_class:
-                context_data = context_class.from_dict(context_dict)
-                img_pack._structured_contexts[name] = context_data
-        
-        return img_pack
     
     def get_missing_contexts(self, required_contexts: list) -> list:
         """Get list of missing required contexts for logging purposes.
