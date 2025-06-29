@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
+from PIL import Image
 
 from pilflow import ImgPack, Operation
 
@@ -59,8 +60,10 @@ class TestOperation:
             def apply(self, img_pack):
                 return img_pack
         
-        # Register the operation with a custom name
-        TestRegisterOperation.register('custom_name')
+        # Register the operation with a custom name using manual registration
+        decorator_func = TestRegisterOperation.register('custom_name')
+        registered_class = decorator_func(TestRegisterOperation)
+        assert registered_class is TestRegisterOperation
         assert 'custom_name' in ImgPack._operations
         assert ImgPack._operations['custom_name'] is TestRegisterOperation
         
@@ -69,22 +72,35 @@ class TestOperation:
             def apply(self, img_pack):
                 return img_pack
         
-        AnotherOperation.register()
+        decorator_func2 = AnotherOperation.register()
+        registered_class2 = decorator_func2(AnotherOperation)
+        assert registered_class2 is AnotherOperation
         assert 'another' in ImgPack._operations
         assert ImgPack._operations['another'] is AnotherOperation
     
     def test_register_decorator(self):
-        """Test the register method as a decorator."""
-        # Create a test operation class
+        """Test operation registration using decorator syntax."""
+        @Operation.register('decorator_test')
         class DecoratorTestOperation(Operation):
             def apply(self, img_pack):
-                return img_pack
+                return img_pack.copy(test_applied=True)
         
-        # Register it manually (since we no longer use decorator syntax)
-        DecoratorTestOperation.register('decorator_test')
+        # Test that the operation was registered
+        img_pack = ImgPack(Image.new('RGB', (100, 100)))
+        result = img_pack.decorator_test()
+        assert result.context['test_applied'] is True
+    
+    def test_register_decorator_auto_name(self):
+        """Test operation registration using decorator with automatic name inference."""
+        @Operation.register
+        class TestAutoNameOperation(Operation):
+            def apply(self, img_pack):
+                return img_pack.copy(auto_name_applied=True)
         
-        assert 'decorator_test' in ImgPack._operations
-        assert ImgPack._operations['decorator_test'] is DecoratorTestOperation
+        # Test that the operation was registered with inferred name 'testautoname'
+        img_pack = ImgPack(Image.new('RGB', (100, 100)))
+        result = img_pack.testautoname()
+        assert result.context['auto_name_applied'] is True
     
     def test_abstract_apply_method(self):
         """Test that the apply method is abstract and must be implemented."""

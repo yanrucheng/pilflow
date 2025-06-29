@@ -9,15 +9,14 @@ that register themselves with the ImgPack base class.
 from src.pilflow import from_file, Operation
 
 # Example of creating a custom operation
+@Operation.register('grayscale')
 class GrayscaleOperation(Operation):
-    """Convert image to grayscale."""
+    """Custom operation to convert image to grayscale."""
     
     def apply(self, img_pack):
-        grayscale_img = img_pack.pil_img.convert('L').convert('RGB')
+        """Convert the image to grayscale."""
+        grayscale_img = img_pack.img.convert('L').convert('RGB')
         return img_pack.copy(new_img=grayscale_img, grayscale_applied=True)
-
-# Register the operation
-GrayscaleOperation.register('grayscale')
 
 def main():
     # Example usage of the pipeline

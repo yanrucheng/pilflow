@@ -1,6 +1,7 @@
 from PIL import Image
 from ..core.operation import Operation
 
+@Operation.register('resize')
 class ResizeOperation(Operation):
     """
     Resize the image based on context or provided dimensions.
@@ -71,10 +72,9 @@ class ResizeOperation(Operation):
         context_updates = {
             'current_width': width,
             'current_height': height,
+            'resize_width': width,
+            'resize_height': height,
             'resized': True
         }
         
         return img_pack.copy(new_img=resized_img, **context_updates)
-
-# Register the operation
-ResizeOperation.register('resize')

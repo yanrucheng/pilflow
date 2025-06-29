@@ -1,6 +1,7 @@
 from PIL import ImageFilter
 from ..core.operation import Operation
 
+@Operation.register('blur')
 class BlurOperation(Operation):
     """
     Apply blur effect to the image.
@@ -33,6 +34,3 @@ class BlurOperation(Operation):
         }
         
         return img_pack.copy(new_img=blurred_img, **context_updates)
-
-# Register the operation
-BlurOperation.register('blur')

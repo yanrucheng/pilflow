@@ -61,34 +61,26 @@ class TestImgPack:
     
     def test_register_operation(self):
         """Test operation registration."""
-        # Create a test operation
+        @Operation.register('test_op')
         class TestOperation(Operation):
             def apply(self, img_pack):
-                return img_pack.copy(test_op_applied=True)
+                return img_pack.copy(test_applied=True)
         
-        # Register the operation
-        TestOperation.register('test_op')
-        
-        # Check if the operation was registered
-        assert 'test_op' in ImgPack._operations
-        assert ImgPack._operations['test_op'] is TestOperation
+        # Test that the operation was registered
+        img_pack = ImgPack(Image.new('RGB', (100, 100)))
+        result = img_pack.test_op()
+        assert result.context['test_applied'] is True
     
     def test_getattr_for_registered_operation(self, small_img_pack):
-        """Test dynamic operation method creation."""
-        # Create a test operation if not already registered
-        if 'test_op' not in ImgPack._operations:
-            class TestOperation(Operation):
-                def apply(self, img_pack):
-                    return img_pack.copy(test_op_applied=True)
-            
-            # Register the operation
-            TestOperation.register('test_op')
+        """Test __getattr__ for registered operations."""
+        @Operation.register('test_op')
+        class TestOperation(Operation):
+            def apply(self, img_pack):
+                return img_pack.copy(test_applied=True)
         
-        # Test calling the operation
+        # Test that we can call the operation
         result = small_img_pack.test_op()
-        assert result is not small_img_pack  # Should be a new instance
-        assert 'test_op_applied' in result.context
-        assert result.context['test_op_applied'] is True
+        assert result.context['test_applied'] is True
     
     def test_getattr_for_unregistered_operation(self, small_img_pack):
         """Test AttributeError for unregistered operations."""

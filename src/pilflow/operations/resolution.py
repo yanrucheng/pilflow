@@ -1,5 +1,6 @@
 from ..core.operation import Operation
 
+@Operation.register('decide_resolution')
 class DecideResolutionOperation(Operation):
     """
     Analyze image resolution and add information to context.
@@ -37,6 +38,3 @@ class DecideResolutionOperation(Operation):
         }
         
         return img_pack.copy(**context_updates)
-
-# Register the operation
-DecideResolutionOperation.register('decide_resolution')
