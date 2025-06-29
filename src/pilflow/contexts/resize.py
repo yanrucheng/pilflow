@@ -2,7 +2,6 @@ from typing import Optional
 from ..core.context import ContextData
 
 
-@ContextData.register
 class ResizeContextData(ContextData):
     """Context data for image resize information.
     

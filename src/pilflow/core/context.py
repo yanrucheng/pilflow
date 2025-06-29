@@ -1,11 +1,7 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Type, Optional, List, Set, TYPE_CHECKING
-from .operation import Operation
-
-if TYPE_CHECKING:
-    from .operation import Operation
+from typing import Dict, Any, Set
 
 
 class ContextData(ABC):
@@ -14,9 +10,6 @@ class ContextData(ABC):
     All context data classes must be JSON serializable and provide
     a clear interface for data access and validation.
     """
-    
-    # Registry for context data classes
-    _context_classes: Dict[str, Type['ContextData']] = {}
     
     # Registry for operations that produce each context type
     _producer_operations: Dict[str, Set[str]] = {}
@@ -140,7 +133,7 @@ class ContextData(ABC):
         """
         def decorator(op_class):
             # Get the operation name from the class
-            from .operation import BaseOperation
+            from .operation.base import BaseOperation
             operation_name = BaseOperation._get_operation_name(op_class)
             
             # Get the context name from the current class
@@ -159,72 +152,6 @@ class ContextData(ABC):
         return decorator
     
     @classmethod
-    def register(cls, name_or_class=None):
-        """Register this context data class.
-        
-        Preferred usage:
-        @ContextData.register  # Infers name from class name (recommended)
-        class MyContextData(ContextData):
-            ...
-            
-        Alternative usages:
-        @ContextData.register('custom_name')  # Explicit name
-        MyContextData.register()  # Manual registration (for tests)
-        
-        Args:
-            name_or_class: Either a name string or a class (when used as decorator)
-        """
-        def _register_context_class(context_class, context_name=None):
-            """Helper function to register a context data class."""
-            if context_name is None:
-                # Infer name from class name (PascalCase to snake_case)
-                name = context_class.__name__
-                name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
-                name = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', name).lower()
-                
-                if name.endswith('_context_data') or name.endswith('_context'):
-                    context_name = name.replace('_context_data', '').replace('_context', '')
-                elif name.endswith('_data'):
-                    context_name = name[:-len('_data')]
-                else:
-                    context_name = name
-            
-            cls._context_classes[context_name] = context_class
-            return context_class
-        
-        # Handle different usage patterns
-        if name_or_class is None:
-            # Called as MyContextData.register()
-            return lambda context_class: _register_context_class(context_class)
-        elif isinstance(name_or_class, str):
-            # Called as @ContextData.register('name')
-            return lambda context_class: _register_context_class(context_class, name_or_class)
-        else:
-            # Called as @ContextData.register (without parentheses)
-            return _register_context_class(name_or_class)
-    
-    @classmethod
-    def get_registered_classes(cls) -> Dict[str, Type['ContextData']]:
-        """Get all registered context data classes.
-        
-        Returns:
-            Dictionary mapping names to context data classes
-        """
-        return cls._context_classes.copy()
-    
-    @classmethod
-    def get_context_class(cls, name: str) -> Optional[Type['ContextData']]:
-        """Get a registered context data class by name.
-        
-        Args:
-            name: Name of the context data class
-            
-        Returns:
-            Context data class or None if not found
-        """
-        return cls._context_classes.get(name)
-    
-    @classmethod
     def register_producer_operation(cls, context_name: str, operation_name: str) -> None:
         """Register an operation as a producer of a specific context type.
         
@@ -237,26 +164,38 @@ class ContextData(ABC):
         cls._producer_operations[context_name].add(operation_name)
     
     @classmethod
-    def get_producer_operations(cls, context_name: str) -> List[str]:
-        """Get all operations that can produce a specific context type.
+    def get_registered_classes(cls) -> Dict[str, Any]:
+        """Get all registered context data classes.
+        
+        Note: Context classes no longer require registration.
+        This method is kept for backward compatibility with tests.
+        
+        Returns:
+            Empty dictionary (contexts don't need registration anymore)
+        """
+        return {}
+    
+    @classmethod
+    def get_producer_operations(cls, context_name: str) -> Set[str]:
+        """Get operations that produce a specific context type.
         
         Args:
             context_name: Name of the context type
             
         Returns:
-            List of operation names that can produce this context
+            Set of operation names that produce this context
         """
-        return list(cls._producer_operations.get(context_name, set()))
+        return cls._producer_operations.get(context_name, set())
     
     @classmethod
-    def get_all_producer_operations(cls) -> Dict[str, List[str]]:
+    def get_all_producer_operations(cls) -> Dict[str, Set[str]]:
         """Get all producer operations for all context types.
         
         Returns:
-            Dictionary mapping context names to lists of producer operation names
+            Dictionary mapping context names to sets of producer operation names
         """
-        return {name: list(ops) for name, ops in cls._producer_operations.items()}
-    
+        return cls._producer_operations.copy()
+     
     def __repr__(self) -> str:
         """String representation of context data."""
         return f"{self.__class__.__name__}({self._data})"

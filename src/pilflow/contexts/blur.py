@@ -2,7 +2,6 @@ from typing import Union
 from ..core.context import ContextData
 
 
-@ContextData.register
 class BlurContextData(ContextData):
     """Context data for image blur information.
     

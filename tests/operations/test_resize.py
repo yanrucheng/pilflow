@@ -3,6 +3,7 @@ from PIL import Image
 
 from pilflow import ImgPack
 from pilflow.operations.resize import ResizeOperation
+from pilflow.contexts.resolution_decision import ResolutionDecisionContextData
 from jinnang.media.resolution import ResolutionPreset
 
 
@@ -63,58 +64,51 @@ class TestResizeOperation:
         result = op.apply(img_pack)
         assert result.pil_img.size == (400, 200)  # Should match exactly
     
-    def test_apply_with_context_dimensions(self):
-        """Test resizing using dimensions from context."""
+    def test_apply_with_resolution_decision_context(self):
+        """Test resizing using ResolutionDecision context."""
         # Create a test image
         img = Image.new('RGB', (1000, 750))
-        img_pack = ImgPack(img, context_data={
-            'target_width': 600,
-            'target_height': 450
-        })
+        img_pack = ImgPack(img)
+        
+        # Add ResolutionDecision context
+        resolution_context = ResolutionDecisionContextData(resolution_preset=ResolutionPreset.RES_720P)
+        img_pack.add_context(resolution_context)
         
         # Apply the operation with no explicit dimensions
         op = ResizeOperation()
         result = op.apply(img_pack)
         
-        # Check that the image was resized according to context
-        assert result.pil_img.size == (600, 450)
+        # Check that the image was resized according to resolution preset
+        assert result.pil_img.size == (1280, 720)
     
-    def test_apply_default_strategy(self):
-        """Test the default resize strategy for large images."""
-        # Create a large image (larger than HD)
+    def test_apply_fails_without_context_or_dimensions(self):
+        """Test that operation fails when no ResolutionDecision context or explicit dimensions are provided."""
+        # Create a test image
         img = Image.new('RGB', (1920, 1080))
-        img_pack = ImgPack(img, context_data={
-            'original_width': 1920,
-            'original_height': 1080,
-            'aspect_ratio': 1920 / 1080
-        })
+        img_pack = ImgPack(img)
         
-        # Apply the operation with no explicit dimensions and no target in context
+        # Apply the operation with no explicit dimensions and no ResolutionDecision context
         op = ResizeOperation()
-        result = op.apply(img_pack)
         
-        # Check that the image was resized to HD
-        assert result.pil_img.width <= 1280
-        assert result.pil_img.height <= 720
-        
-        # Check that the aspect ratio was preserved
-        assert abs((result.pil_img.width / result.pil_img.height) - (1920 / 1080)) < 0.01
+        # Should raise ValueError with helpful message
+        with pytest.raises(ValueError, match="ResizeOperation requires explicit dimensions or a ResolutionDecision context"):
+            op.apply(img_pack)
     
-    def test_apply_no_resize_for_small_images(self):
-        """Test that small images are not resized by default."""
-        # Create a small image (smaller than HD)
+    def test_apply_with_original_preset_context(self):
+        """Test resizing with ORIGINAL preset in ResolutionDecision context."""
+        # Create a test image
         img = Image.new('RGB', (640, 480))
-        img_pack = ImgPack(img, context_data={
-            'original_width': 640,
-            'original_height': 480,
-            'aspect_ratio': 640 / 480
-        })
+        img_pack = ImgPack(img)
         
-        # Apply the operation with no explicit dimensions and no target in context
+        # Add ResolutionDecision context with ORIGINAL preset
+        resolution_context = ResolutionDecisionContextData(resolution_preset=ResolutionPreset.ORIGINAL)
+        img_pack.add_context(resolution_context)
+        
+        # Apply the operation with no explicit dimensions
         op = ResizeOperation()
         result = op.apply(img_pack)
         
-        # Check that the image was not resized
+        # Check that the image was not resized (kept original size)
         assert result.pil_img.size == (640, 480)
     
     def test_method_chaining(self):

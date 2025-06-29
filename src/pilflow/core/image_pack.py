@@ -104,15 +104,9 @@ class ImgPack:
             name: Optional name for the context (inferred from class if not provided)
         """
         if name is None:
-            # Infer name from context class registration
+            # Infer name from context class using _get_context_name method
             context_class = type(context_data)
-            for registered_name, registered_class in ContextData.get_registered_classes().items():
-                if registered_class == context_class:
-                    name = registered_name
-                    break
-            else:
-                # Fallback to class name if not registered
-                name = context_class.__name__.lower().replace('contextdata', '')
+            name = context_class._get_context_name()
         
         self._structured_contexts[name] = context_data
         # Also update legacy context data

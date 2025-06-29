@@ -1,6 +1,7 @@
 from PIL import Image
 from ..core.operation import Operation
 from ..contexts.resize import ResizeContextData
+from ..contexts.resolution_decision import ResolutionDecisionContextData
 
 @ResizeContextData.register_as_producer
 @Operation.register
@@ -24,16 +25,18 @@ class ResizeOperation(Operation):
     
     def apply(self, img_pack):
         """
-        Resize the image based on context or provided dimensions.
+        Resize the image based on ResolutionDecision context data.
         
         Args:
             img_pack: ImgPack instance
             
         Returns:
             ImgPack: New instance with resized image
+            
+        Raises:
+            ValueError: If no ResolutionDecision context is found
         """
         current_img = img_pack.pil_img
-        context = img_pack.context
         width = self.width
         height = self.height
         
@@ -49,44 +52,26 @@ class ResizeOperation(Operation):
                 width = target_width
                 height = target_height
         
-        # If no dimensions provided, try to use context
+        # If no dimensions provided, require ResolutionDecision context
         if width is None and height is None:
-            # Check for resolution decision context
             resolution_decision_context = img_pack.get_context('resolution_decision')
-            if resolution_decision_context:
-                # Extract width and height from the resolution preset
-                target_width, target_height = resolution_decision_context.resolution_preset.value
-                
-                # Handle ORIGINAL preset (None, None)
-                if target_width is None or target_height is None:
-                    width = current_img.width
-                    height = current_img.height
-                else:
-                    width = target_width
-                    height = target_height
-            else:
-                # Check if there are target dimensions in legacy context
-                width = context.get('target_width')
-                height = context.get('target_height')
+            if not resolution_decision_context:
+                raise ValueError(
+                    "ResizeOperation requires explicit dimensions or a ResolutionDecision context. "
+                    "Use ResolutionDecisionContextData to provide resize dimensions, "
+                    "which can be produced by DecideResolutionOperation."
+                )
             
-            # If still no dimensions, use a default resize strategy
-            if width is None and height is None:
-                # Fallback to image dimensions
-                original_width = current_img.width
-                original_height = current_img.height
-                aspect_ratio = original_width / original_height
-                
-                # Default: resize to HD if larger than HD
-                if original_width > 1280 or original_height > 720:
-                    if aspect_ratio >= 16/9:  # Wide aspect ratio
-                        width = 1280
-                        height = int(1280 / aspect_ratio)
-                    else:  # Tall aspect ratio
-                        height = 720
-                        width = int(720 * aspect_ratio)
-                else:
-                    # Image is already small enough, no resize needed
-                    return img_pack.copy()
+            # Extract width and height from the resolution preset
+            target_width, target_height = resolution_decision_context.resolution_preset.value
+            
+            # Handle ORIGINAL preset (None, None)
+            if target_width is None or target_height is None:
+                width = current_img.width
+                height = current_img.height
+            else:
+                width = target_width
+                height = target_height
         
         # Calculate missing dimension while preserving aspect ratio
         if width is None and height is not None:

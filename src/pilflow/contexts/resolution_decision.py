@@ -2,7 +2,6 @@ from typing import Union
 from ..core.context import ContextData
 
 
-@ContextData.register
 class ResolutionDecisionContextData(ContextData):
     """Context data for resolution decision operations.
     

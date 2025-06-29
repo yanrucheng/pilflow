@@ -2,7 +2,6 @@ from typing import Union
 from ..core.context import ContextData
 
 
-@ContextData.register
 class SharpenContextData(ContextData):
     """Context data for image sharpen information.
     

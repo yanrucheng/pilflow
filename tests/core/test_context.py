@@ -12,27 +12,28 @@ from jinnang.media.resolution import ResolutionPreset
 class TestContextData:
     """Tests for the ContextData base class."""
     
-    def test_context_registration(self):
-        """Test context data class registration."""
-        @ContextData.register
+    def test_context_name_generation(self):
+        """Test context name generation from class name."""
         class TestContextData(ContextData):
             def validate(self):
                 pass
         
-        registered_classes = ContextData.get_registered_classes()
-        assert 'test' in registered_classes
-        assert registered_classes['test'] is TestContextData
+        # Test that context name is generated correctly
+        assert TestContextData._get_context_name() == 'test'
     
-    def test_context_registration_with_name(self):
-        """Test context data class registration with explicit name."""
-        @ContextData.register('custom_test')
+    def test_context_name_generation_with_suffix(self):
+        """Test context name generation with ContextData suffix."""
         class CustomTestContextData(ContextData):
             def validate(self):
                 pass
         
+        # Test that ContextData suffix is removed
+        assert CustomTestContextData._get_context_name() == 'custom_test'
+    
+    def test_get_registered_classes_empty(self):
+        """Test that get_registered_classes returns empty dict (backward compatibility)."""
         registered_classes = ContextData.get_registered_classes()
-        assert 'custom_test' in registered_classes
-        assert registered_classes['custom_test'] is CustomTestContextData
+        assert registered_classes == {}
     
 
 

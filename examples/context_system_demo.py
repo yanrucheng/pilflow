@@ -85,40 +85,34 @@ def demo_imgpack_integration():
 
 
 def demo_json_serialization():
-    """Demonstrate JSON serialization of ImgPack with contexts."""
+    """Demonstrate JSON serialization of individual context data."""
     print("=== JSON Serialization ===")
     
-    # Create ImgPack with multiple contexts
-    img = create_sample_image(800, 600)
-    img_pack = ImgPack(img)
-    
-    # Add contexts
-    img_pack.add_context(ResolutionDecisionContextData(
+    # Create and serialize individual context data
+    resolution_data = ResolutionDecisionContextData(
         resolution_preset=ResolutionPreset.RES_720P
-    ))
+    )
     
-    img_pack.add_context(BlurContextData(
+    blur_data = BlurContextData(
         blur_applied=True,
         blur_radius=2.5
-    ))
+    )
     
-    # Serialize to JSON
-    json_str = img_pack.to_json()
-    data = json.loads(json_str)
+    # Serialize individual contexts to JSON
+    resolution_json = resolution_data.to_json()
+    blur_json = blur_data.to_json()
     
     print("Serialized contexts:")
-    for context_name, context_data in data['structured_contexts'].items():
-        print(f"  {context_name}: {context_data}")
+    print(f"  resolution_decision: {resolution_json}")
+    print(f"  blur: {blur_json}")
     
     # Restore from JSON
-    restored_pack = ImgPack.from_json(json_str, img)
-    print(f"\nRestored contexts: {list(restored_pack.get_all_contexts().keys())}")
+    restored_resolution = ResolutionDecisionContextData.from_json(resolution_json)
+    restored_blur = BlurContextData.from_json(blur_json)
     
-    # Verify data integrity
-    restored_resolution = restored_pack.get_context('resolution_decision')
-    restored_blur = restored_pack.get_context('blur')
-    print(f"Restored resolution preset: {restored_resolution.resolution_preset}")
-    print(f"Restored blur intensity: {restored_blur.get_blur_intensity()}")
+    print(f"\nRestored resolution preset: {restored_resolution.resolution_preset}")
+    print(f"Restored blur applied: {restored_blur.blur_applied}")
+    print(f"Restored blur radius: {restored_blur.blur_radius}")
     print()
 
 
@@ -184,7 +178,6 @@ def demo_custom_context_class():
     """Demonstrate creating a custom context data class."""
     print("=== Custom Context Data Class ===")
     
-    @ContextData.register
     class ColorAnalysisContextData(ContextData):
         """Context data for color analysis results."""
         
@@ -237,9 +230,9 @@ def demo_custom_context_class():
     print(f"Is bright: {color_context.is_bright()}")
     print(f"Is colorful: {color_context.is_colorful()}")
     
-    # Check registration
-    registered_classes = ContextData.get_registered_classes()
-    print(f"Custom context registered as: {'color_analysis' in registered_classes}")
+    # Test JSON serialization
+    json_str = color_context.to_json()
+    print(f"JSON serialization: {json_str}")
     
     # Add to ImgPack
     img = create_sample_image()
@@ -247,6 +240,7 @@ def demo_custom_context_class():
     img_pack.add_context(color_context)
     
     print(f"Context added to ImgPack: {img_pack.has_context('color_analysis')}")
+    print(f"Context name inferred as: 'color_analysis'")
     print()
 
 
