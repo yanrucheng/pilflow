@@ -140,7 +140,8 @@ class ContextData(ABC):
         """
         def decorator(op_class):
             # Get the operation name from the class
-            operation_name = Operation._get_operation_name(op_class)
+            from .operation import BaseOperation
+            operation_name = BaseOperation._get_operation_name(op_class)
             
             # Get the context name from the current class
             context_name = cls._get_context_name()

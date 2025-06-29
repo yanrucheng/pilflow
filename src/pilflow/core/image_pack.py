@@ -1,10 +1,6 @@
 
-import base64
-import binascii
-from io import BytesIO
 from typing import Dict, Any, Optional, Union
 from PIL import Image
-import PIL
 from .context import ContextData
 
 class ImgPack:
@@ -26,7 +22,9 @@ class ImgPack:
     @property
     def img(self):
         """Return the PIL image object."""
-        return self.pil_img
+        from .consumers import ToImageConsumer
+        consumer = ToImageConsumer()
+        return consumer.apply(self)
 
     @property
     def base64(self) -> str:
@@ -34,9 +32,9 @@ class ImgPack:
 
         The image is saved as PNG format.
         """
-        buffered = BytesIO()
-        self.pil_img.save(buffered, format="PNG")
-        return base64.b64encode(buffered.getvalue()).decode('utf-8')
+        from .consumers import ToBase64Consumer
+        consumer = ToBase64Consumer(format="PNG")
+        return consumer.apply(self)
 
     @staticmethod
     def from_base64(base64_string: str, **kwargs) -> 'ImgPack':
@@ -53,14 +51,9 @@ class ImgPack:
             ValueError: If the base64 string is invalid or cannot be decoded.
             PIL.UnidentifiedImageError: If the decoded data is not a valid image.
         """
-        try:
-            image_data = base64.b64decode(base64_string)
-            pil_img = Image.open(BytesIO(image_data))
-            return ImgPack(pil_img, context_data=kwargs)
-        except (binascii.Error, ValueError) as e:
-            raise ValueError(f"Invalid base64 string: {str(e)}")
-        except PIL.UnidentifiedImageError as e:
-            raise PIL.UnidentifiedImageError(f"Decoded data is not a valid image: {str(e)}")
+        from .producers import FromBase64Producer
+        producer = FromBase64Producer(base64_string, **kwargs)
+        return producer.apply()
 
     @staticmethod
     def from_file(file_path: str, **kwargs) -> 'ImgPack':
@@ -77,13 +70,9 @@ class ImgPack:
             FileNotFoundError: If the file does not exist.
             PIL.UnidentifiedImageError: If the file is not a valid image.
         """
-        try:
-            pil_img = Image.open(file_path)
-            return ImgPack(pil_img, context_data=kwargs)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"Image file not found: {file_path}")
-        except PIL.UnidentifiedImageError as e:
-            raise PIL.UnidentifiedImageError(f"File is not a valid image: {file_path}")
+        from .producers import FromFileProducer
+        producer = FromFileProducer(file_path, **kwargs)
+        return producer.apply()
     
     def copy(self, new_img=None, **context_updates) -> 'ImgPack':
         """Create a new ImgPack instance with optional updates.

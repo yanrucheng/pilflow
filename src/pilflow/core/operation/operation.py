@@ -1,13 +1,9 @@
-import re
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from .base import BaseOperation
 
-class Operation(ABC):
-    """Base class for all image processing operations."""
-    
-    def __init__(self, *args, **kwargs):
-        """Initialize operation with parameters."""
-        self.args = args
-        self.kwargs = kwargs
+
+class Operation(BaseOperation):
+    """Base class for image processing operations (ImgPack in, ImgPack out)."""
     
     @abstractmethod
     def apply(self, img_pack):
@@ -20,30 +16,7 @@ class Operation(ABC):
             ImgPack: New ImgPack instance with operation applied
         """
         pass
-    
-    def __call__(self, img_pack):
-        """Make operation callable."""
-        return self.apply(img_pack)
-    
-    @staticmethod
-    def _get_operation_name(operation_class):
-        """Get the operation name from a class.
-        
-        Args:
-            operation_class: The operation class
-            
-        Returns:
-            str: The operation name in snake_case
-        """
-        name = operation_class.__name__
-        name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
-        name = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', name).lower()
-        
-        if name.endswith('_operation'):
-            return name[:-len('_operation')]
-        else:
-            return name
-    
+
     @classmethod
     def register(cls, name_or_class=None):
         """Register this operation with ImgPack.
@@ -60,12 +33,12 @@ class Operation(ABC):
         Args:
             name_or_class: Either a name string or a class (when used as decorator)
         """
-        from .image_pack import ImgPack
+        from ..image_pack import ImgPack
         
         def _register_operation(operation_class, operation_name=None):
             """Helper function to register an operation."""
             if operation_name is None:
-                operation_name = cls._get_operation_name(operation_class)
+                operation_name = BaseOperation._get_operation_name(operation_class)
             ImgPack.register_operation(operation_name, operation_class)
             return operation_class
         
