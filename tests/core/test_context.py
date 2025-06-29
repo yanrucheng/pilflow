@@ -1,5 +1,6 @@
 import pytest
 import json
+import unittest
 from PIL import Image
 from pilflow.core.context import ContextData
 from pilflow.core.image_pack import ImgPack
@@ -232,6 +233,63 @@ class TestBlurContextData:
         
         no_blur = BlurContextData(blur_applied=False, blur_radius=0)
         assert no_blur.get_blur_intensity() == 'none'
+
+
+class TestContextProducerRegistration(unittest.TestCase):
+    """Test the new context producer registration system."""
+    
+    def test_producer_registration(self):
+        """Test that operations are correctly registered as context producers."""
+        # Check that DecideResolutionOperation is registered as a producer of resolution context
+        resolution_producers = ResolutionContextData.get_producer_operations('resolution')
+        self.assertIn('decide_resolution', resolution_producers)
+        
+        # Check that ResizeOperation is registered as a producer of resize context
+        resize_producers = ResizeContextData.get_producer_operations('resize')
+        self.assertIn('resize', resize_producers)
+        
+        # Check that BlurOperation is registered as a producer of blur context
+        blur_producers = BlurContextData.get_producer_operations('blur')
+        self.assertIn('blur', blur_producers)
+    
+    def test_get_all_producer_operations(self):
+        """Test getting all producer operations."""
+        all_producers = ContextData.get_all_producer_operations()
+        
+        # Check that we have producers for our context types
+        self.assertIn('resolution', all_producers)
+        self.assertIn('resize', all_producers)
+        self.assertIn('blur', all_producers)
+        
+        # Check specific producers
+        self.assertIn('decide_resolution', all_producers['resolution'])
+        self.assertIn('resize', all_producers['resize'])
+        self.assertIn('blur', all_producers['blur'])
+    
+    def test_missing_context_suggestions(self):
+        """Test that missing context suggestions work with the new system."""
+        import io
+        import sys
+        from unittest.mock import patch
+        
+        # Create an ImgPack
+        test_image = Image.new('RGB', (100, 100), color='red')
+        img_pack = ImgPack(test_image)
+        
+        # Capture stdout to check suggestions
+        captured_output = io.StringIO()
+        
+        with patch('sys.stdout', captured_output):
+            # Try to use resize operation without resolution context
+            # This should trigger missing context detection
+            img_pack.log_missing_contexts(['resolution'], 'resize')
+        
+        output = captured_output.getvalue()
+        
+        # Check that warning and suggestions are printed
+        self.assertIn('Warning: resize requires missing contexts', output)
+        self.assertIn('decide_resolution', output)
+        self.assertIn('resolution', output)
 
 
 class TestImgPackContextIntegration:

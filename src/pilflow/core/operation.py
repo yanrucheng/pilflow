@@ -25,6 +25,25 @@ class Operation(ABC):
         """Make operation callable."""
         return self.apply(img_pack)
     
+    @staticmethod
+    def _get_operation_name(operation_class):
+        """Get the operation name from a class.
+        
+        Args:
+            operation_class: The operation class
+            
+        Returns:
+            str: The operation name in snake_case
+        """
+        name = operation_class.__name__
+        name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
+        name = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', name).lower()
+        
+        if name.endswith('_operation'):
+            return name[:-len('_operation')]
+        else:
+            return name
+    
     @classmethod
     def register(cls, name_or_class=None):
         """Register this operation with ImgPack.
@@ -46,15 +65,7 @@ class Operation(ABC):
         def _register_operation(operation_class, operation_name=None):
             """Helper function to register an operation."""
             if operation_name is None:
-                # Infer name from class name (PascalCase to snake_case)
-                name = operation_class.__name__
-                name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
-                name = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', name).lower()
-                
-                if name.endswith('_operation'):
-                    operation_name = name[:-len('_operation')]
-                else:
-                    operation_name = name
+                operation_name = cls._get_operation_name(operation_class)
             ImgPack.register_operation(operation_name, operation_class)
             return operation_class
         

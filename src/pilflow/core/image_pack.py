@@ -201,19 +201,22 @@ class ImgPack:
         if missing:
             print(f"Warning: {operation_name} requires missing contexts: {missing}")
             
-            # Suggest generator operations based on registered context classes
+            # Suggest producer operations based on registered producers
             suggestions = []
             for context_name in missing:
-                context_class = ContextData.get_context_class(context_name)
-                if context_class:
-                    # Try to find operations that generate this context
-                    for op_name, op_class in self._operations.items():
-                        # This is a heuristic - operations that mention the context name
-                        # in their class name or docstring might generate it
-                        if (context_name in op_name.lower() or 
-                            (hasattr(op_class, '__doc__') and op_class.__doc__ and 
-                             context_name in op_class.__doc__.lower())):
-                            suggestions.append(f"  - Run '{op_name}' operation to generate '{context_name}' context")
+                producer_operations = ContextData.get_producer_operations(context_name)
+                if producer_operations:
+                    for producer_op in producer_operations:
+                        suggestions.append(f"  - Run '{producer_op}' operation to generate '{context_name}' context")
+                else:
+                    # Fallback to heuristic approach if no producers registered
+                    context_class = ContextData.get_context_class(context_name)
+                    if context_class:
+                        for op_name, op_class in self._operations.items():
+                            if (context_name in op_name.lower() or 
+                                (hasattr(op_class, '__doc__') and op_class.__doc__ and 
+                                 context_name in op_class.__doc__.lower())):
+                                suggestions.append(f"  - Run '{op_name}' operation to generate '{context_name}' context (heuristic)")
             
             if suggestions:
                 print("Suggested operations to generate missing contexts:")

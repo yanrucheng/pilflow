@@ -3,6 +3,7 @@ from ..core.operation import Operation
 from ..contexts.resize import ResizeContextData
 from ..contexts.resolution import ResolutionContextData
 
+@ResizeContextData.register_as_producer
 @Operation.register
 class ResizeOperation(Operation):
     """

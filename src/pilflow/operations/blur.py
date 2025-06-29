@@ -2,6 +2,7 @@ from PIL import Image, ImageFilter
 from ..core.operation import Operation
 from ..contexts.blur import BlurContextData
 
+@BlurContextData.register_as_producer
 @Operation.register
 class BlurOperation(Operation):
     """

@@ -1,6 +1,8 @@
 from ..core.operation import Operation
 from ..contexts.resolution import ResolutionContextData
+from ..core.image_pack import ImgPack
 
+@ResolutionContextData.register_as_producer
 @Operation.register
 class DecideResolutionOperation(Operation):
     """

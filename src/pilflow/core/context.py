@@ -1,7 +1,10 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Type, Optional
+from typing import Dict, Any, Type, Optional, List, Set, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .operation import Operation
 
 
 class ContextData(ABC):
@@ -13,6 +16,9 @@ class ContextData(ABC):
     
     # Registry for context data classes
     _context_classes: Dict[str, Type['ContextData']] = {}
+    
+    # Registry for operations that produce each context type
+    _producer_operations: Dict[str, Set[str]] = {}
     
     def __init__(self, **kwargs):
         """Initialize context data with keyword arguments."""
@@ -101,6 +107,57 @@ class ContextData(ABC):
         self.validate()
     
     @classmethod
+    def _get_context_name(cls):
+        """Get the context name from the class name.
+        
+        Returns:
+            str: The context name in snake_case
+        """
+        name = cls.__name__
+        name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
+        name = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', name).lower()
+        
+        if name.endswith('_context_data'):
+            return name[:-len('_context_data')]
+        elif name.endswith('_context'):
+            return name[:-len('_context')]
+        else:
+            return name
+    
+    @classmethod
+    def register_as_producer(cls, operation_class=None):
+        """Decorator to register an operation as a producer of this context type.
+        
+        Usage:
+        @ResolutionContextData.register_as_producer
+        @Operation.register
+        class DecideResolutionOperation(Operation):
+            ...
+            
+        Returns:
+            Decorator function or decorated class
+        """
+        def decorator(op_class):
+            # Get the operation name from the class
+            from .operation import Operation
+            operation_name = Operation._get_operation_name(op_class)
+            
+            # Get the context name from the current class
+            context_name = cls._get_context_name()
+            
+            # Register this operation as a producer of the context
+            cls.register_producer_operation(context_name, operation_name)
+            
+            return op_class
+        
+        # If called with a class directly (without parentheses)
+        if operation_class is not None:
+            return decorator(operation_class)
+        
+        # If called as @decorator (with parentheses)
+        return decorator
+    
+    @classmethod
     def register(cls, name_or_class=None):
         """Register this context data class.
         
@@ -165,6 +222,39 @@ class ContextData(ABC):
             Context data class or None if not found
         """
         return cls._context_classes.get(name)
+    
+    @classmethod
+    def register_producer_operation(cls, context_name: str, operation_name: str) -> None:
+        """Register an operation as a producer of a specific context type.
+        
+        Args:
+            context_name: Name of the context type
+            operation_name: Name of the operation that produces this context
+        """
+        if context_name not in cls._producer_operations:
+            cls._producer_operations[context_name] = set()
+        cls._producer_operations[context_name].add(operation_name)
+    
+    @classmethod
+    def get_producer_operations(cls, context_name: str) -> List[str]:
+        """Get all operations that can produce a specific context type.
+        
+        Args:
+            context_name: Name of the context type
+            
+        Returns:
+            List of operation names that can produce this context
+        """
+        return list(cls._producer_operations.get(context_name, set()))
+    
+    @classmethod
+    def get_all_producer_operations(cls) -> Dict[str, List[str]]:
+        """Get all producer operations for all context types.
+        
+        Returns:
+            Dictionary mapping context names to lists of producer operation names
+        """
+        return {name: list(ops) for name, ops in cls._producer_operations.items()}
     
     def __repr__(self) -> str:
         """String representation of context data."""
