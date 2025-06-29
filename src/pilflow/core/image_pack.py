@@ -1,5 +1,10 @@
-from PIL import Image
+
+import base64
+import binascii
+from io import BytesIO
 from typing import Dict, Any, Optional, Union
+from PIL import Image
+import PIL
 from .context import ContextData
 
 class ImgPack:
@@ -22,6 +27,63 @@ class ImgPack:
     def img(self):
         """Return the PIL image object."""
         return self.pil_img
+
+    @property
+    def base64(self) -> str:
+        """Return the base64 encoded string of the PIL image.
+
+        The image is saved as PNG format.
+        """
+        buffered = BytesIO()
+        self.pil_img.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    @staticmethod
+    def from_base64(base64_string: str, **kwargs) -> 'ImgPack':
+        """Create an ImgPack instance from a base64 encoded string.
+
+        Args:
+            base64_string: The base64 encoded string of the image.
+            **kwargs: Additional context data to initialize the ImgPack.
+
+        Returns:
+            ImgPack: A new ImgPack instance.
+
+        Raises:
+            ValueError: If the base64 string is invalid or cannot be decoded.
+            PIL.UnidentifiedImageError: If the decoded data is not a valid image.
+        """
+        try:
+            image_data = base64.b64decode(base64_string)
+            pil_img = Image.open(BytesIO(image_data))
+            return ImgPack(pil_img, context_data=kwargs)
+        except (binascii.Error, ValueError) as e:
+            raise ValueError(f"Invalid base64 string: {str(e)}")
+        except PIL.UnidentifiedImageError as e:
+            raise PIL.UnidentifiedImageError(f"Decoded data is not a valid image: {str(e)}")
+
+    @staticmethod
+    def from_file(file_path: str, **kwargs) -> 'ImgPack':
+        """Create an ImgPack instance from an image file.
+
+        Args:
+            file_path: Path to the image file.
+            **kwargs: Additional context data to initialize the ImgPack.
+
+        Returns:
+            ImgPack: A new ImgPack instance.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            PIL.UnidentifiedImageError: If the file is not a valid image.
+        """
+        try:
+            pil_img = Image.open(file_path)
+            return ImgPack(pil_img, context_data=kwargs)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Image file not found: {file_path}")
+        except PIL.UnidentifiedImageError as e:
+            raise PIL.UnidentifiedImageError(f"File is not a valid image: {file_path}")
     
     def copy(self, new_img=None, **context_updates) -> 'ImgPack':
         """Create a new ImgPack instance with optional updates.
@@ -173,14 +235,3 @@ class ImgPack:
                 return operation(self)
             return operation_method
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
-
-def from_file(file_path):
-    try:
-        pil_img = Image.open(file_path)
-        return ImgPack(pil_img, context_data={})
-    except FileNotFoundError:
-        print(f"Error: File not found at {file_path}")
-        return None
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None

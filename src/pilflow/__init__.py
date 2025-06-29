@@ -1,4 +1,4 @@
-from .core.image_pack import ImgPack, from_file
+from .core.image_pack import ImgPack
 from .core.operation import Operation
 from .core.context import ContextData
 
@@ -9,4 +9,4 @@ from . import contexts
 from . import operations
 
 __version__ = "0.1.0"
-__all__ = ["ImgPack", "from_file", "Operation"]
+__all__ = ["ImgPack", "Operation"]

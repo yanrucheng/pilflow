@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from pilflow import ImgPack, from_file, Operation
+from pilflow import ImgPack, Operation
 
 
 class TestIntegration:
@@ -42,7 +42,7 @@ class TestIntegration:
         """Test loading an image from file and applying operations."""
         # Load image and apply operations
         result = (
-            from_file(small_image_path)
+            ImgPack.from_file(small_image_path)
             .decide_resolution()
             .resize(width=150)
         )

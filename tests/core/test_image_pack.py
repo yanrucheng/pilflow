@@ -2,7 +2,12 @@ import pytest
 from pathlib import Path
 from PIL import Image
 
-from pilflow import ImgPack, from_file
+import base64
+import binascii
+import pytest
+from io import BytesIO
+from pilflow import ImgPack
+from pilflow.core.image_pack import ImgPack as CoreImgPack # To access static methods directly
 from pilflow.core.operation import Operation
 
 
@@ -88,26 +93,55 @@ class TestImgPack:
             small_img_pack.nonexistent_operation()
 
 
-class TestFromFile:
-    """Tests for the from_file function."""
-    
-    def test_from_file_with_valid_file(self, small_image_path):
-        """Test from_file with a valid file path."""
-        img_pack = from_file(small_image_path)
-        assert isinstance(img_pack, ImgPack)
+class TestImgPackStaticMethods:
+    """Tests for the static methods of ImgPack class."""
+
+    def test_from_base64_valid(self, small_image):
+        """Test from_base64 with a valid base64 string."""
+        buffered = BytesIO()
+        small_image.save(buffered, format="PNG")
+        base64_string = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+        img_pack = CoreImgPack.from_base64(base64_string, test_context='value')
+        assert isinstance(img_pack, CoreImgPack)
         assert isinstance(img_pack.pil_img, Image.Image)
-        assert img_pack.context == {}
-    
-    def test_from_file_with_invalid_file(self):
-        """Test from_file with an invalid file path."""
-        img_pack = from_file('nonexistent_file.jpg')
-        assert img_pack is None
-    
-    def test_from_file_with_invalid_image(self, tmp_path):
+        assert img_pack.context == {'test_context': 'value'}
+        # Compare images by converting back to base64 or by pixel data
+        buffered_result = BytesIO()
+        img_pack.pil_img.save(buffered_result, format="PNG")
+        assert base64.b64encode(buffered_result.getvalue()).decode('utf-8') == base64_string
+
+    def test_from_base64_invalid_string(self):
+        """Test from_base64 with an invalid base64 string."""
+        with pytest.raises(ValueError, match="Invalid base64 string"):
+            CoreImgPack.from_base64("not-a-valid-base64-string")
+
+    def test_from_base64_not_image_data(self):
+        """Test from_base64 with base64 data that is not an image."""
+        # Base64 encoded string "hello world"
+        not_image_base64 = base64.b64encode(b"hello world").decode('utf-8')
+        with pytest.raises(Image.UnidentifiedImageError, match="Decoded data is not a valid image"):
+            CoreImgPack.from_base64(not_image_base64)
+
+    def test_from_file_valid(self, small_image_path):
+        """Test from_file with a valid file path."""
+        img_pack = CoreImgPack.from_file(small_image_path, test_context='value')
+        assert isinstance(img_pack, CoreImgPack)
+        assert isinstance(img_pack.pil_img, Image.Image)
+        assert img_pack.context == {'test_context': 'value'}
+        # Verify image content (e.g., mode and size)
+        original_image = Image.open(small_image_path)
+        assert img_pack.pil_img.mode == original_image.mode
+        assert img_pack.pil_img.size == original_image.size
+
+    def test_from_file_nonexistent(self):
+        """Test from_file with a nonexistent file path."""
+        with pytest.raises(FileNotFoundError, match="Image file not found"):
+            CoreImgPack.from_file("nonexistent_file.jpg")
+
+    def test_from_file_invalid_image_content(self, tmp_path):
         """Test from_file with a file that is not a valid image."""
-        # Create a text file
         text_file = tmp_path / 'test.txt'
         text_file.write_text('This is not an image')
-        
-        img_pack = from_file(text_file)
-        assert img_pack is None
+        with pytest.raises(Image.UnidentifiedImageError, match="File is not a valid image"):
+            CoreImgPack.from_file(str(text_file))

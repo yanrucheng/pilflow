@@ -1,1 +1,1 @@
-from .image_pack import ImgPack, from_file
+from .image_pack import ImgPack

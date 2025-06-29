@@ -8,7 +8,7 @@ from PIL import Image
 src_dir = Path(__file__).parent.parent / 'src'
 sys.path.insert(0, str(src_dir))
 
-from pilflow import ImgPack, from_file
+from pilflow import ImgPack
 from tests.test_data.data_manager import get_test_image, cleanup_test_data
 
 @pytest.fixture(scope="session")
