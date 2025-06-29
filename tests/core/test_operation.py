@@ -77,6 +77,13 @@ class TestOperation:
         assert registered_class2 is AnotherOperation
         assert 'another' in ImgPack._operations
         assert ImgPack._operations['another'] is AnotherOperation
+
+        @Operation.register
+        class TestAutoNameOperation(Operation):
+            def apply(self, img_pack):
+                return img_pack
+        assert 'test_auto_name' in ImgPack._operations
+        assert ImgPack._operations['test_auto_name'] is TestAutoNameOperation
     
     def test_register_decorator(self):
         """Test operation registration using decorator syntax."""
@@ -97,9 +104,9 @@ class TestOperation:
             def apply(self, img_pack):
                 return img_pack.copy(auto_name_applied=True)
         
-        # Test that the operation was registered with inferred name 'testautoname'
+        # Test that the operation was registered with inferred name 'test_auto_name'
         img_pack = ImgPack(Image.new('RGB', (100, 100)))
-        result = img_pack.testautoname()
+        result = img_pack.test_auto_name()
         assert result.context['auto_name_applied'] is True
     
     def test_abstract_apply_method(self):

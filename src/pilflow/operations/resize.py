@@ -1,7 +1,7 @@
 from PIL import Image
 from ..core.operation import Operation
 
-@Operation.register('resize')
+@Operation.register
 class ResizeOperation(Operation):
     """
     Resize the image based on context or provided dimensions.

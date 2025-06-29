@@ -1,6 +1,6 @@
 from ..core.operation import Operation
 
-@Operation.register('decide_resolution')
+@Operation.register
 class DecideResolutionOperation(Operation):
     """
     Analyze image resolution and add information to context.

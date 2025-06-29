@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 
 class Operation(ABC):
@@ -28,11 +29,14 @@ class Operation(ABC):
     def register(cls, name_or_class=None):
         """Register this operation with ImgPack.
         
-        Can be used as:
-        1. @Operation.register - infers name from class name
-        2. @Operation.register('custom_name') - uses provided name
-        3. MyOperation.register() - manual registration
-        4. MyOperation.register('custom_name') - manual registration with name
+        Preferred usage:
+        @Operation.register  # Infers name from class name (recommended)
+        class MyOperation(Operation):
+            ...
+            
+        Alternative usages:
+        @Operation.register('custom_name')  # Explicit name
+        MyOperation.register()  # Manual registration (for tests)
         
         Args:
             name_or_class: Either a name string or a class (when used as decorator)
@@ -42,23 +46,29 @@ class Operation(ABC):
         def _register_operation(operation_class, operation_name=None):
             """Helper function to register an operation."""
             if operation_name is None:
-                # Infer name from class name
-                operation_name = operation_class.__name__.lower().replace('operation', '')
+                # Infer name from class name (PascalCase to snake_case)
+                name = operation_class.__name__
+                name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)
+                name = re.sub(r'([a-z\d])([A-Z])', r'\1_\2', name).lower()
+                
+                if name.endswith('_operation'):
+                    operation_name = name[:-len('_operation')]
+                else:
+                    operation_name = name
             ImgPack.register_operation(operation_name, operation_class)
             return operation_class
         
-        # Case 1: Used as @Operation.register (no arguments)
+        # Preferred case: @Operation.register (no arguments)
         if name_or_class is None:
             # Return a decorator function
             return lambda operation_class: _register_operation(operation_class)
         
-        # Case 2: Used as @Operation.register('name') or called with string
+        # Alternative case: @Operation.register('name') or called with string
         elif isinstance(name_or_class, str):
-            # Always return a decorator function when string is provided
+            # Return a decorator function when string is provided
             return lambda operation_class: _register_operation(operation_class, name_or_class)
         
-        # Case 3: Used as decorator without parentheses @Operation.register
-        # where name_or_class is actually the class being decorated
+        # Direct registration case (primarily for backward compatibility)
         else:
             # Direct registration of the class
             return _register_operation(name_or_class)

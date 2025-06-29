@@ -1,7 +1,7 @@
 from PIL import ImageFilter
 from ..core.operation import Operation
 
-@Operation.register('blur')
+@Operation.register
 class BlurOperation(Operation):
     """
     Apply blur effect to the image.
