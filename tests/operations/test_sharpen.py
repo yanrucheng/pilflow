@@ -39,19 +39,21 @@ class TestSharpenOperation:
         # Check the result
         assert result is not img_pack  # Should be a new instance
         assert result.pil_img is not img_pack.pil_img  # Should be a new image
-        assert result.context['sharpen_applied'] is True
-        assert result.context['sharpen_radius'] == 2
-        assert result.context['sharpen_percent'] == 150
-        assert result.context['sharpen_threshold'] == 3
+        sharpen_context = result.get_context('sharpen')
+        assert sharpen_context.sharpen_applied is True
+        assert sharpen_context.sharpen_radius == 2
+        assert sharpen_context.sharpen_percent == 150
+        assert sharpen_context.sharpen_threshold == 3
         
         # Apply the operation with custom parameters
         op = SharpenOperation(radius=3, percent=200, threshold=5)
         result = op.apply(img_pack)
         
         # Check the result
-        assert result.context['sharpen_radius'] == 3
-        assert result.context['sharpen_percent'] == 200
-        assert result.context['sharpen_threshold'] == 5
+        sharpen_context = result.get_context('sharpen')
+        assert sharpen_context.sharpen_radius == 3
+        assert sharpen_context.sharpen_percent == 200
+        assert sharpen_context.sharpen_threshold == 5
     
     def test_method_chaining(self):
         """Test that the operation can be called via method chaining."""
@@ -61,8 +63,9 @@ class TestSharpenOperation:
         # Test chaining
         result = img_pack.sharpen(radius=3, percent=200, threshold=5)
         
-        assert result.context['sharpen_applied'] is True
-        assert result.context['sharpen_radius'] == 3
-        assert result.context['sharpen_percent'] == 200
-        assert result.context['sharpen_threshold'] == 5
+        sharpen_context = result.get_context('sharpen')
+        assert sharpen_context.sharpen_applied is True
+        assert sharpen_context.sharpen_radius == 3
+        assert sharpen_context.sharpen_percent == 200
+        assert sharpen_context.sharpen_threshold == 5
         assert isinstance(result.pil_img, Image.Image)

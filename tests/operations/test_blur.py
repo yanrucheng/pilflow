@@ -36,15 +36,17 @@ class TestBlurOperation:
         # Check the result
         assert result is not img_pack  # Should be a new instance
         assert result.pil_img is not img_pack.pil_img  # Should be a new image
-        assert result.context['blur_applied'] is True
-        assert result.context['blur_radius'] == 2
+        blur_context = result.get_context('blur')
+        assert blur_context.blur_applied is True
+        assert blur_context.blur_radius == 2
         
         # Apply the operation with custom radius
         op = BlurOperation(radius=3.5)
         result = op.apply(img_pack)
         
         # Check the result
-        assert result.context['blur_radius'] == 3.5
+        blur_context = result.get_context('blur')
+        assert blur_context.blur_radius == 3.5
     
     def test_method_chaining(self):
         """Test that the operation can be called via method chaining."""
@@ -56,8 +58,9 @@ class TestBlurOperation:
         result = img_pack.blur(radius=1.5)
         
         # Check the result
-        assert result.context['blur_applied'] is True
-        assert result.context['blur_radius'] == 1.5
+        blur_context = result.get_context('blur')
+        assert blur_context.blur_applied is True
+        assert blur_context.blur_radius == 1.5
     
     def test_blur_effect(self, small_img_pack):
         """Test that the blur effect is actually applied to the image."""

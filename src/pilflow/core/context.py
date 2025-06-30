@@ -1,105 +1,17 @@
-import json
 import re
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Set
-from .operation import BaseOperation
+from typing import Dict, Set
 
 
-class ContextData(ABC):
+class ContextData:
     """Base class for all context data classes.
     
-    All context data classes must be JSON serializable and provide
-    a clear interface for data access and validation.
+    This class acts as a bridge for data transfer between producers (operations)
+    and consumers. It maintains a registry of which operations produce which
+    context data types.
     """
     
     # Registry for operations that produce each context type
     _producer_operations: Dict[str, Set[str]] = {}
-    
-    def __init__(self, **kwargs):
-        """Initialize context data with keyword arguments."""
-        self._data = kwargs
-        self.validate()
-    
-    @abstractmethod
-    def validate(self) -> None:
-        """Validate the context data.
-        
-        Raises:
-            ValueError: If the data is invalid
-        """
-        pass
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert context data to dictionary for JSON serialization.
-        
-        Returns:
-            Dict containing all context data
-        """
-        return self._data.copy()
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ContextData':
-        """Create context data instance from dictionary.
-        
-        Args:
-            data: Dictionary containing context data
-            
-        Returns:
-            ContextData instance
-        """
-        return cls(**data)
-    
-    def to_json(self) -> str:
-        """Convert context data to JSON string.
-        
-        Returns:
-            JSON string representation
-        """
-        return json.dumps(self.to_dict(), indent=2)
-    
-    @classmethod
-    def from_json(cls, json_str: str) -> 'ContextData':
-        """Create context data instance from JSON string.
-        
-        Args:
-            json_str: JSON string containing context data
-            
-        Returns:
-            ContextData instance
-        """
-        data = json.loads(json_str)
-        return cls.from_dict(data)
-    
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get value from context data.
-        
-        Args:
-            key: Key to retrieve
-            default: Default value if key not found
-            
-        Returns:
-            Value associated with key or default
-        """
-        return self._data.get(key, default)
-    
-    def set(self, key: str, value: Any) -> None:
-        """Set value in context data.
-        
-        Args:
-            key: Key to set
-            value: Value to set
-        """
-        self._data[key] = value
-        self.validate()
-    
-    def update(self, **kwargs) -> None:
-        """Update context data with new values.
-        
-        Args:
-            **kwargs: Key-value pairs to update
-        """
-        self._data.update(kwargs)
-        self.validate()
     
     @classmethod
     def _get_context_name(cls):
@@ -125,31 +37,21 @@ class ContextData(ABC):
         
         Usage:
         @ResolutionDecisionContextData.register_as_producer
-        @Operation.register
-        class DecideResolutionOperation(Operation):
+        class DecideResolutionOperation(BaseOperation):
             ...
-            
-        Returns:
-            Decorator function or decorated class
         """
         def decorator(op_class):
-            # Get the operation name from the class
-            # Import moved to top of file
+            # Local import to avoid circular dependency
+            from .operation import BaseOperation
+            
             operation_name = BaseOperation._get_operation_name(op_class)
-            
-            # Get the context name from the current class
             context_name = cls._get_context_name()
-            
-            # Register this operation as a producer of the context
             cls.register_producer_operation(context_name, operation_name)
-            
             return op_class
         
-        # If called with a class directly (without parentheses)
         if operation_class is not None:
             return decorator(operation_class)
         
-        # If called as @decorator (with parentheses)
         return decorator
     
     @classmethod
@@ -163,18 +65,6 @@ class ContextData(ABC):
         if context_name not in cls._producer_operations:
             cls._producer_operations[context_name] = set()
         cls._producer_operations[context_name].add(operation_name)
-    
-    @classmethod
-    def get_registered_classes(cls) -> Dict[str, Any]:
-        """Get all registered context data classes.
-        
-        Note: Context classes no longer require registration.
-        This method is kept for backward compatibility with tests.
-        
-        Returns:
-            Empty dictionary (contexts don't need registration anymore)
-        """
-        return {}
     
     @classmethod
     def get_producer_operations(cls, context_name: str) -> Set[str]:
@@ -195,8 +85,7 @@ class ContextData(ABC):
         Returns:
             Dictionary mapping context names to sets of producer operation names
         """
-        return cls._producer_operations.copy()
-     
+        return cls._producer_operations.copy()     
     def __repr__(self) -> str:
         """String representation of context data."""
         return f"{self.__class__.__name__}({self._data})"

@@ -129,11 +129,7 @@ class ImgPack:
         new_context.update(context_updates)
         new_pack = ImgPack(img, new_context)
         # Deep copy structured contexts
-        new_pack._structured_contexts = {}
-        for name, context in self._structured_contexts.items():
-            # Create a new instance from the context's data
-            context_class = type(context)
-            new_pack._structured_contexts[name] = context_class.from_dict(context.to_dict())
+        new_pack._structured_contexts = self._structured_contexts.copy()
         return new_pack
     
     def add_context(self, context_data: ContextData, name: Optional[str] = None) -> None:
@@ -149,8 +145,6 @@ class ImgPack:
             name = context_class._get_context_name()
         
         self._structured_contexts[name] = context_data
-        # Also update legacy context data
-        self._context_data.update(context_data.to_dict())
     
     def get_context(self, name: str) -> Optional[ContextData]:
         """Get structured context data by name.

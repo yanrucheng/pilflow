@@ -20,8 +20,9 @@ class TestIntegration:
         # Check the result
         assert result.img.size[0] == 200  # Width should be 200
         assert result.has_context('resolution_decision')
-        assert 'blur_applied' in result.context
-        assert result.context['blur_radius'] == 1.5
+        blur_context = result.get_context('blur')
+        assert blur_context.blur_applied is True
+        assert blur_context.blur_radius == 1.5
     
     def test_custom_operation(self):
         """Test creating and using a custom operation."""
@@ -73,5 +74,5 @@ class TestIntegration:
         assert result.img.size == (50, 50)
         assert result.context['processed'] is True
         assert result.context['pipeline_step'] == 'final'
-        assert 'blur_radius' in result.context
-        assert 'resize_width' in result.context
+        assert result.has_context('blur')
+        assert result.has_context('resize')
