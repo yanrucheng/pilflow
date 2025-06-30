@@ -90,3 +90,16 @@ class Operation(BaseOperation):
         else:
             # Direct registration of the class
             return _register_operation(name_or_class)
+
+
+class Consumer(BaseOperation):
+    """Base class for operations that consume an ImgPack without returning one."""
+
+    @abstractmethod
+    def apply(self, img_pack):
+        """Apply the operation to an ImgPack.
+
+        Args:
+            img_pack: ImgPack instance to process
+        """
+        pass
